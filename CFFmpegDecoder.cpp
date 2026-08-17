@@ -512,11 +512,7 @@ void CFFmpegDecoder::VideoDecodeLoop()
     AVPacket* packet = nullptr;
 
     while (!m_bStopThreads) {
-		if (m_bPaused.load()) {
-			std::unique_lock<std::mutex> lock(m_pauseMutex);
-			m_pauseCondVar.wait(lock, [this] { return !m_bPaused.load() || m_bStopThreads; });
-			continue;
-		}
+	
 		// 定义中断回调：如果暂停或停止，则中断 Pop 的等待
 		auto interruptFn = [this]() {
 			return m_bPaused.load() || m_bStopThreads;
@@ -607,11 +603,7 @@ void CFFmpegDecoder::AudioDecodeLoop()
     AVPacket* packet = nullptr;
 
     while (!m_bStopThreads) {
-		if (m_bPaused.load()) {
-			std::unique_lock<std::mutex> lock(m_pauseMutex);
-			m_pauseCondVar.wait(lock, [this] { return !m_bPaused.load() || m_bStopThreads; });
-			continue;
-		}
+		
 		// 定义中断回调：如果暂停或停止，则中断 Pop 的等待
 		auto interruptFn = [this]() {
 			return m_bPaused.load() || m_bStopThreads;
@@ -672,6 +664,9 @@ void CFFmpegDecoder::SetAudioSpeed(double speed)
 bool CFFmpegDecoder::Seek(int64_t targetMs)
 {
     if (!m_pFormatCtx || !m_bOpened) return false;
+
+    Resume();
+
 
     // 1. 【阻塞 ReadLoop】
     // 锁定控制互斥量，设置暂停标志

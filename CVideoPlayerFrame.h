@@ -90,6 +90,7 @@ private:
    CWndMediaDisplay* m_pMediaDisplay = nullptr;
     // === 播放状态 ===
     bool m_bIsPlaying;
+    bool m_bIsPaused = false;
     bool m_bIsFullScreen;
     int m_nTotalDuration = 0; // 毫秒
     //int m_nCurrentPos;    // 毫秒

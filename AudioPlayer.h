@@ -46,20 +46,28 @@ public:
     // 用于动态补偿音视频同步
     double GetCurrentLatencySeconds() const;
 
+	// 【新增】暂停和恢复接口
+	void Pause();
+	void Resume();
+
 private:
-    SDL_AudioDeviceID m_audioDevice = 0;
-    SDL_AudioStream*  m_audioStream = nullptr;
+    SDL_AudioDeviceID m_audioDevID = 0;
+    SDL_AudioStream* m_pAudioStream = nullptr;
     SDL_AudioSpec     m_spec{}; // 使用 {} 初始化，确保跨平台兼容性
     
     std::atomic<bool>   m_isInitialized{false};
     std::atomic<uint64_t> m_totalBytesSent{0}; // 总共送入 SDL 流的字节数
-    
+    bool m_bPaused = false; // 【新增】记录暂停状态
+
     // 用于计算精确时钟的缓存变量
     // mutable 允许在 const 成员函数中修改这些缓存值
     mutable uint64_t    m_lastQueriedBytes = 0;
     mutable double      m_lastQueriedTime  = 0.0;
     mutable Uint64      m_lastQueryTicks   = 0;
     
+    mutable std::mutex m_mutex;
+	int m_sampleRate = 44100;
+	int m_channels = 2;
     // 【可选】如果需要更严格的线程安全，可以添加一个互斥锁保护 m_spec 等状态
     // std::mutex m_mutex;
 };

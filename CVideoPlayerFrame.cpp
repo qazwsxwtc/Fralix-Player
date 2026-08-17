@@ -257,7 +257,7 @@ if (!m_bShowControlBar && m_pBottomCtr) {
 			if (m_pSliderProgress) {
 				m_pSliderProgress->SetValue(result->pos);
 			}
-
+			m_audioPlayer.Resume();
 			// 恢复进度条定时器
 			SetTimer(m_hWnd, TIMER_ID_UPDATE_PROGRESS, TIMER_INTERVAL_MS, NULL);
 
@@ -563,8 +563,19 @@ void CVideoPlayerFrame::Notify(TNotifyUI& msg)
     {
         if (msg.pSender == m_pBtnPlayPause)
         {
-            if (m_bIsPlaying) Pause();
-            else Play();
+			if (m_bIsPlaying)
+			{
+				if (m_bIsPaused)
+				{
+					Play();
+					m_bIsPaused = false;
+				}
+				else
+				{
+					Pause();
+					m_bIsPaused = true;
+				}
+			}
         }
         else if (msg.pSender == m_pBtnStop)
         {
@@ -638,6 +649,7 @@ void CVideoPlayerFrame::Play()
 	if (m_pFFmpegEngine->IsPaused())
 	{
 		// 如果是从暂停状态恢复
+		m_audioPlayer.Resume();
 		m_pFFmpegEngine->Resume();
 		m_bIsPlaying = true;
 
@@ -663,15 +675,16 @@ void CVideoPlayerFrame::Pause()
 {
 	if (!m_pFFmpegEngine || !m_bIsPlaying) return;
 
+	m_audioPlayer.Pause();
 	// 调用解码器暂停
 	m_pFFmpegEngine->Pause();
-	m_bIsPlaying = false; // 标记为非播放状态（用于UI显示）
+	m_bIsPlaying = true; // 标记为非播放状态（用于UI显示）
 
 	// 停止进度条更新定时器
 	KillTimer(m_hWnd, TIMER_ID_UPDATE_PROGRESS);
 
 	// 可选：暂停音频播放器
-	// m_audioPlayer.Pause(); 
+	// 
 
 	UpdatePlayPauseIcon();
 }
@@ -1094,7 +1107,7 @@ void CVideoPlayerFrame::SeekAsync(int nPos)
   
 	// 3. 确保音频播放器也重置
 	m_audioPlayer.Flush(); // 或者 Restart()
-
+	m_bIsPaused = false;
 	m_bIsPlaying = true;
 	UpdatePlayPauseIcon();
 

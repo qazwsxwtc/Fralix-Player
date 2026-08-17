@@ -2,13 +2,6 @@
 #include <iostream>
 
 CAudioPlayer::CAudioPlayer()
-    : m_audioDevice(0)
-    , m_audioStream(nullptr)
-    , m_totalBytesSent(0)
-    , m_lastQueriedBytes(0)
-    , m_lastQueriedTime(0.0)
-    , m_lastQueryTicks(0)
-    , m_isInitialized(false)
 {
 }
 
@@ -30,14 +23,14 @@ bool CAudioPlayer::Init(int sampleRate, int channels) {
     desiredSpec.channels = channels;
     desiredSpec.format = SDL_AUDIO_S16LE;
     
-    m_audioDevice = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec);
-    if (m_audioDevice == 0) {
+    m_audioDevID = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec);
+    if (m_audioDevID == 0) {
         std::cerr << "SDL_OpenAudioDevice Error: " << SDL_GetError() << std::endl;
         return false;
     }
 
-    if (!SDL_GetAudioDeviceFormat(m_audioDevice, &m_spec, NULL)) {
-         SDL_CloseAudioDevice(m_audioDevice);
+    if (!SDL_GetAudioDeviceFormat(m_audioDevID, &m_spec, NULL)) {
+         SDL_CloseAudioDevice(m_audioDevID);
          return false;
     }
 
@@ -47,19 +40,19 @@ bool CAudioPlayer::Init(int sampleRate, int channels) {
     inputSpec.channels = channels;
     inputSpec.format = SDL_AUDIO_S16LE;
 
-    m_audioStream = SDL_CreateAudioStream(&inputSpec, &m_spec);
-    if (!m_audioStream) {
-        SDL_CloseAudioDevice(m_audioDevice);
+    m_pAudioStream = SDL_CreateAudioStream(&inputSpec, &m_spec);
+    if (!m_pAudioStream) {
+        SDL_CloseAudioDevice(m_audioDevID);
         return false;
     }
 
-    if (!SDL_BindAudioStream(m_audioDevice, m_audioStream)) {
-        SDL_DestroyAudioStream(m_audioStream);
-        SDL_CloseAudioDevice(m_audioDevice);
+    if (!SDL_BindAudioStream(m_audioDevID, m_pAudioStream)) {
+        SDL_DestroyAudioStream(m_pAudioStream);
+        SDL_CloseAudioDevice(m_audioDevID);
         return false;
     }
 
-    SDL_ResumeAudioDevice(m_audioDevice);
+    SDL_ResumeAudioDevice(m_audioDevID);
     
     m_totalBytesSent.store(0);
     m_lastQueriedBytes = 0;
@@ -72,16 +65,47 @@ bool CAudioPlayer::Init(int sampleRate, int channels) {
 
 void CAudioPlayer::Stop() {
     if (!m_isInitialized.load()) return;
-    if (m_audioStream) SDL_DestroyAudioStream(m_audioStream);
-    if (m_audioDevice) SDL_CloseAudioDevice(m_audioDevice);
+    if (m_pAudioStream) SDL_DestroyAudioStream(m_pAudioStream);
+    if (m_audioDevID) SDL_CloseAudioDevice(m_audioDevID);
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
     m_isInitialized.store(false);
 }
 
+
+// 【新增】实现暂停
+void CAudioPlayer::Pause()
+{
+	if (!m_isInitialized) return;
+
+	std::lock_guard<std::mutex> lock(m_mutex);
+	if (!m_bPaused) {
+		// 第二个参数 true 表示暂停设备
+		SDL_PauseAudioStreamDevice(m_pAudioStream);
+		m_bPaused = true;
+		std::cout << "[Audio] Paused." << std::endl;
+	}
+}
+
+// 【新增】实现恢复
+void CAudioPlayer::Resume()
+{
+	if (!m_isInitialized) return;
+
+	std::lock_guard<std::mutex> lock(m_mutex);
+	if (m_bPaused) {
+		// 第二个参数 false 表示恢复播放
+		SDL_ResumeAudioStreamDevice(m_pAudioStream);
+		m_bPaused = false;
+		std::cout << "[Audio] Resumed." << std::endl;
+	}
+}
+
+
+
 void CAudioPlayer::FeedData(const uint8_t* data, int size) {
     if (!m_isInitialized.load() || !data || size <= 0) return;
-
-    if (SDL_PutAudioStreamData(m_audioStream, data, size) < 0) {
+	std::lock_guard<std::mutex> lock(m_mutex);
+    if (SDL_PutAudioStreamData(m_pAudioStream, data, size) < 0) {
         std::cerr << "SDL_PutAudioStreamData Error: " << SDL_GetError() << std::endl;
         return;
     }
@@ -91,18 +115,18 @@ void CAudioPlayer::FeedData(const uint8_t* data, int size) {
 }
 
 double CAudioPlayer::GetPlayedSeconds() const {
-	if (!m_isInitialized.load() || !m_audioStream) return 0.0;
+	if (!m_isInitialized.load() || !m_pAudioStream) return 0.0;
 
 	// 1. 获取已送入 SDL 流的总字节数 (输入格式)
 	uint64_t sentBytes = m_totalBytesSent.load();
 
 	// 2. 获取 SDL 内部缓冲区中尚未播放的字节数 (输出格式)
-	int queuedBytes = SDL_GetAudioStreamAvailable(m_audioStream);
+	int queuedBytes = SDL_GetAudioStreamAvailable(m_pAudioStream);
 	if (queuedBytes < 0) queuedBytes = 0;
 
 	// 3. 关键：获取输入和输出的规格，以处理重采样带来的字节数差异
 	SDL_AudioSpec inSpec, outSpec;
-	if (!SDL_GetAudioStreamFormat(m_audioStream, &inSpec, &outSpec)) {
+	if (!SDL_GetAudioStreamFormat(m_pAudioStream, &inSpec, &outSpec)) {
 		return 0.0;
 	}
 
@@ -126,13 +150,13 @@ double CAudioPlayer::GetPlayedSeconds() const {
 
 // 在 CAudioPlayer.cpp 中实现
 double CAudioPlayer::GetPreciseClock() {
-	if (!m_isInitialized.load() || !m_audioStream) return 0.0;
+	if (!m_isInitialized.load() || !m_pAudioStream) return 0.0;
 
 	// 1. 获取当前高性能计数器
 	Uint64 nowTicks = SDL_GetPerformanceCounter();
 
 	// 2. 获取流中剩余的字节数 (注意：这是输出格式的字节数)
-	int bytesInStream = SDL_GetAudioStreamAvailable(m_audioStream);
+	int bytesInStream = SDL_GetAudioStreamAvailable(m_pAudioStream);
 	if (bytesInStream < 0) bytesInStream = 0;
 
 	// 3. 获取总发送的输入字节数
@@ -145,7 +169,7 @@ double CAudioPlayer::GetPreciseClock() {
 
 	// 更可靠的方法：使用 SDL_GetAudioStreamFormat 获取输出格式
 	SDL_AudioSpec outSpec;
-	if (!SDL_GetAudioStreamFormat(m_audioStream, NULL, &outSpec)) {
+	if (!SDL_GetAudioStreamFormat(m_pAudioStream, NULL, &outSpec)) {
 		// 如果获取失败，回退到 m_spec
 		outSpec = m_spec;
 	}
@@ -177,7 +201,7 @@ double CAudioPlayer::GetPreciseClock() {
 	// 已播放时长 = 输入时长 - 剩余时长
 
 	SDL_AudioSpec inSpec;
-	SDL_GetAudioStreamFormat(m_audioStream, &inSpec, NULL);
+	SDL_GetAudioStreamFormat(m_pAudioStream, &inSpec, NULL);
 	double inputBytesPerSec = inSpec.freq * inSpec.channels * SDL_AUDIO_BITSIZE(inSpec.format) / 8.0;
 
 	double totalDurationSec = (double)sentInputBytes / inputBytesPerSec;
@@ -192,28 +216,28 @@ double CAudioPlayer::GetPreciseClock() {
 }
 
 void CAudioPlayer::Flush() {
-	if (!m_isInitialized.load() || !m_audioStream) return;
+	if (!m_isInitialized.load() || !m_pAudioStream) return;
 
 	// 【强力模式】解绑流，清空，再重新绑定
 	// 这会彻底清除硬件和软件缓冲中的所有残留数据
 
 	// 1. 暂停设备
-	SDL_PauseAudioDevice(m_audioDevice);
+	SDL_PauseAudioDevice(m_audioDevID);
 
 	// 2. 解绑流
-	SDL_UnbindAudioStream(m_audioStream);
+	SDL_UnbindAudioStream(m_pAudioStream);
 
 	// 3. 清空流
-	SDL_FlushAudioStream(m_audioStream);
+	SDL_FlushAudioStream(m_pAudioStream);
 
 	// 4. 重新绑定
-	SDL_BindAudioStream(m_audioDevice, m_audioStream);
+	SDL_BindAudioStream(m_audioDevID, m_pAudioStream);
 
 	// 5. 重置时钟计数
 	m_totalBytesSent.store(0);
 
 	// 6. 恢复播放
-	SDL_ResumeAudioDevice(m_audioDevice);
+	SDL_ResumeAudioDevice(m_audioDevID);
 
 	std::cout << "Audio Player Flushed." << std::endl;
 
@@ -246,15 +270,15 @@ void CAudioPlayer::Restart() {
 }
 
 double CAudioPlayer::GetCurrentLatencySeconds() const {
-	if (!m_isInitialized.load() || !m_audioStream) return 0.0;
+	if (!m_isInitialized.load() || !m_pAudioStream) return 0.0;
 
 	// 1. 获取 SDL 流中尚未播放的字节数 (输出格式)
-	int bytesInBuffer = SDL_GetAudioStreamAvailable(m_audioStream);
+	int bytesInBuffer = SDL_GetAudioStreamAvailable(m_pAudioStream);
 	if (bytesInBuffer < 0) bytesInBuffer = 0;
 
 	// 2. 获取输出规格
 	SDL_AudioSpec outSpec;
-	if (!SDL_GetAudioStreamFormat(m_audioStream, NULL, &outSpec)) {
+	if (!SDL_GetAudioStreamFormat(m_pAudioStream, NULL, &outSpec)) {
 		outSpec = m_spec; // Fallback
 	}
 
