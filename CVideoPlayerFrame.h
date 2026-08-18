@@ -8,7 +8,7 @@
 #include "CVideoRenderWnd.h"
 #include "CFFmpegDecoder.h"
 #include "WndMediaDisplay.h"
-
+#include "VideoScanner.h"
 using namespace DuiLib;
 
 
@@ -54,6 +54,12 @@ public:
 
     void AdjustVideoLayout(int videoWidth, int videoHeight);
 
+
+    void ScanLibrary();
+
+    void TogglePlaylistVisibility();
+    void OnScanLibraryOne();//扫描所有文件，扫描一次，导出一次
+    void OnScanAllLibrary();//扫描所有文件，一次性扫描出所有文件
 protected:
 	// === 内部辅助方法 ===
 	void UpdatePlayPauseIcon();
@@ -71,21 +77,30 @@ protected:
 	// 更新播放按钮 UI 状态
 	void UpdatePlayButtonUI();
 
+	//void Init Playlist();
+	/*void AddToPlaylist(const std::wstring& filePath);
+	void UpdatePlaylistUI();*/
+	void PlayByIndex(int index);
+    void PlayNextInPlaylist();
+    LRESULT OnAddListItem(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+
 private:
     // === UI 控件指针缓存 ===
    // CPaintManagerUI m_PaintManager;
     
     // 视频渲染容器 (可能是 ActiveXUI 或自定义 HWND 容器)
-    CControlUI* m_pVideoContainer; 
-    CLabelUI*   m_pLblFilename;
-    CLabelUI*   m_pLblCurrTime;
-    CLabelUI*   m_pLblTotalTime;
-    CSliderUI*  m_pSliderProgress;
-    CSliderUI*  m_pSliderVolume;
-    CButtonUI*  m_pBtnPlayPause;
-    CButtonUI*  m_pBtnStop;
-    CButtonUI*  m_pBtnOpen;
-    CButtonUI*  m_pBtnFullScreen;
+    CControlUI* m_pVideoContainer = nullptr;
+    CLabelUI*   m_pLblFilename = nullptr;
+    CLabelUI*   m_pLblCurrTime = nullptr;
+    CLabelUI*   m_pLblTotalTime = nullptr;
+    CSliderUI*  m_pSliderProgress = nullptr;
+    CSliderUI*  m_pSliderVolume = nullptr;
+    CButtonUI*  m_pBtnPlayPause = nullptr;
+    CButtonUI*  m_pBtnStop = nullptr;
+    CButtonUI*  m_pBtnOpen = nullptr;
+    CButtonUI*  m_pBtnFullScreen = nullptr;
+    CListUI* m_pPlaylistList = nullptr;
+    CVerticalLayoutUI* m_pPlaylistPanel = nullptr;
 
    CWndMediaDisplay* m_pMediaDisplay = nullptr;
     // === 播放状态 ===
@@ -119,7 +134,8 @@ private:
 	CVerticalLayoutUI* m_pBottomCtr; // 底部控制栏指针
 	bool m_bShowControlBar;          // 是否显示控制栏
    
-	
+    std::vector<std::wstring> m_playlistPaths;
+    int  m_nCurrentPlayIndex = -1;
 	
 };
 

@@ -1,4 +1,4 @@
-# Fralix-Player
+# Fralix-Player（frame (帧)+lix (流后缀)）
 ## 中文
 Fralix‑Player（帧阅播放器），一款自研视频播放器。当前本项目只支持windows播放，且功能暂未完善，希望未来能逐步完善，支持多平台。并且能任意使用任何插件进行解码播放
 

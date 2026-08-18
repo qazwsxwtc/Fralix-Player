@@ -22,6 +22,7 @@
 #include <cmath>
 #include <cassert>
 #include <cctype>
+#include <codecvt> // C++17 deprecated but still works, or use iconv/widechar_to_utf8 on linux
 
 // 定时器 ID
 #define TIMER_ID_UPDATE_PROGRESS 1001
@@ -33,6 +34,8 @@
 #define WM_USER_PLAY_END (WM_USER + 1001 )
 #define WM_USER_PLAY_AUDIO (WM_USER + 1002 )
 #define WM_USER_SEEK_COMPLETE (WM_USER + 1003)
+#define WM_USER_SCAN_COMPLETE (WM_USER + 1004)
+#define WM_ADDLISTITEM (WM_USER + 1005)
 
 // 在 CFFmpegDecoder.cpp 顶部或 .h文件中
 const int MAX_VIDEO_PACKET_QUEUE_SIZE = 100;
@@ -134,5 +137,11 @@ struct SeekResult {
  * @details 用于将 Duilib 编辑框内容转换为 Git 命令所需的 UTF-8 字符串
  */
 std::string WStringToUTF8(const std::wstring& wstr);
+
+std::wstring UTF8ToWString(const std::string& str);
+
+
+
+
 
 #endif

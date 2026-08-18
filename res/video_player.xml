@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window size="1000,600" caption="0,0,0,40" bkcolor="#FF1E1E1E">
+    <Font id="0" name="微软雅黑" size="12" bold="false"/>
+    <Font id="1" name="微软雅黑" size="14" bold="true"/>
+    <Default shared="true" name="Slider" value="thumbsize=&quot;10,10&quot; bkimage=&quot;file='bg.bmp' corner='6,0,6,0' mask='#FFFF00FF'&quot; foreimage=&quot;file='fg.bmp' corner='6,0,6,0' mask='#FFFF00FF'&quot; thumbimage=&quot;file='thumb.bmp' source='30,0,40,10' mask='#FFDAEBF9'&quot; thumbhotimage=&quot;file='thumb.bmp' source='10,0,20,10' mask='#FFDAEBF9'&quot; " />
+  <Default name="VScrollBar" value="button1normalimage=&quot;file='scroll.png' source='0,0,16,16'&quot; button1hotimage=&quot;file='scroll.png' source='0,0,16,16' mask='#FFFF00FF'&quot; button1pushedimage=&quot;file='scroll.png' source='0,16,16,32' mask='#FFFF00FF'&quot; button1disabledimage=&quot;file='scroll.png' source='0,0,16,16' mask='#FFFF00FF'&quot; button2normalimage=&quot;file='scroll.png' source='0,32,16,48' mask='#FFFF00FF'&quot; button2hotimage=&quot;file='scroll.png' source='0,32,16,48' mask='#FFFF00FF'&quot; button2pushedimage=&quot;file='scroll.png' source='0,48,16,64' mask='#FFFF00FF'&quot; button2disabledimage=&quot;file='scroll.png' source='0,32,16,48' mask='#FFFF00FF'&quot; thumbnormalimage=&quot;file='scroll.png' source='0,64,16,80' corner='2,2,2,2' mask='#FFFF00FF'&quot; thumbhotimage=&quot;file='scroll.png' source='0,64,16,80' corner='2,2,2,2' mask='#FFFF00FF'&quot; thumbpushedimage=&quot;ffile='scroll.png' source='0,64,16,80' corner='2,2,2,2' mask='#FFFF00FF'&quot; thumbdisabledimage=&quot;file='scroll.png' source='0,64,16,80' corner='2,2,2,2' mask='#FFFF00FF'&quot; railnormalimage=&quot;file='scroll.png' source='0,80,16,96' corner='2,2,2,2' mask='#FFFF00FF'&quot; railhotimage=&quot;file='scroll.png' source='0,80,16,96' corner='2,2,2,2' mask='#FFFF00FF'&quot; railpushedimage=&quot;file='scroll.png' source='0,96,16,112' corner='2,2,2,2' mask='#FFFF00FF'&quot; raildisabledimage=&quot;file='scroll.png' source='0,80,16,96' corner='2,2,2,2' mask='#FFFF00FF'&quot; bknormalimage=&quot;file='scroll.png' source='0,128,16,146' corner='2,2,2,2' mask='#FFFF00FF'&quot; bkhotimage=&quot;file='scroll.png' source='0,128,16,146' corner='2,2,2,2' mask='#FFFF00FF'&quot; bkpushedimage=&quot;file='scroll.png' source='0,128,16,146' corner='2,2,2,2' mask='#FFFF00FF'&quot; bkdisabledimage=&quot;file='scroll.png' source='0,128,16,146' corner='2,2,2,2' mask='#FFFF00FF'&quot; " />
+  
+  <!-- 根布局：水平分割 -->
+    <HorizontalLayout bkimage="file='bg.png' corner='10,100,10,10' hole='true'" bkcolor="#FF313C00" >
+        
+        <!-- ================= 左侧：播放列表区域 ================= -->
+        <!-- 注意：不要设 width="100%"，设固定宽度或 shareweight -->
+        <VerticalLayout name="playlist_panel" width="250" bkcolor="#FF252525" visible="false">
+            <HorizontalLayout height="35" bkcolor="#FF333333">
+                <Text text="播放列表" padding="10,0,0,0" textcolor="#FFFFFFFF" font="1" align="left"/>
+                <Button name="btn_close_playlist" text="✕ " width="30" height="30" normaltextcolor="#FFAAAAAA" hottextcolor="#FFFFFFFF"/>
+            </HorizontalLayout>
+            
+            <!-- List 控件 -->
+            <List name="playlist_list" bordersize="1"  header="hidden" inset="0,0,0,0" headerbkimage="file='list_header_bg.png'"  bkcolor="#FFFFFFFF"  itemtextcolor="#FF000000" itemshowhtml="true" vscrollbar="true" hscrollbar="true" itemalign="left" itembkcolor="#FFE2DDDF" itemaltbk="true">
+              <ListHeader height="0" hidden="true">
+				         <ListHeaderItem text="文件名" font="1"  width="250" />
+			        </ListHeader>
+
+
+
+             
+             
+            </List>
+        
+        </VerticalLayout>
+
+        <!-- ================= 右侧：主播放区域 ================= -->
+        <!-- 注意：不要设 width="100%"，它会自动填充剩余空间 -->
+        <VerticalLayout name="main_right_panel">
+            
+            <!-- 顶部标题栏 -->
+            <HorizontalLayout height="35" bkcolor="#FF1E1E1E">
+                <HorizontalLayout>
+                    <Text text="🎬 Fralix-Player" pos="10, 5, 140, 30" float="true" textcolor="#FFFFFFFF" font="1" />
+                   
+                </HorizontalLayout>
+                
+                <HorizontalLayout width="97" inset="0,1,0,0" childvalign="center">
+                    <Button name="minbtn" maxwidth="26" maxheight="17" normalimage="file='sys_dlg_min.png' source='52,0,78,17'" hotimage="file='sys_dlg_min.png' source='26,0,52,17'" pushedimage="file='sys_dlg_min.png' source='0,0,26,17'"/>
+                    <Button name="maxbtn" maxwidth="26" maxheight="17" normalimage="file='sys_dlg_max.png' source='52,0,78,17'" hotimage="file='sys_dlg_max.png' source='26,0,52,18'" pushedimage="file='sys_dlg_max.png' source='0,0,26,17'"/>
+                    <Button name="restorebtn" visible="false" maxwidth="17" maxheight="35" normalimage="file='sys_dlg_restore.png' source='52,0,78,17'" hotimage="file='sys_dlg_restore.png' source='26,0,52,17'" pushedimage="file='sys_dlg_restore.png' source='0,0,26,17'" />
+                    <Button name="closebtn" maxwidth="45" maxheight="17" normalimage="file='sys_dlg_close.png' source='90,0,135,17'" hotimage="file='sys_dlg_close.png' source='45,0,90,17'" pushedimage="file='sys_dlg_close.png' source='0,0,45,17'"/>
+                </HorizontalLayout>
+            </HorizontalLayout>
+            
+            <!-- 视频容器 -->
+            <VerticalLayout name="video_container" padding="0,0,0,0">
+                <MediaDisplay visible="true" name="video_display" bkcolor="#FF000000" />
+            </VerticalLayout>
+            
+            <!-- 底部控制栏 -->
+            <VerticalLayout name="bottomctr" height="60">
+                <HorizontalLayout height="20" bkcolor="#FF2D2D2D">
+                    <Label name="lbl_curr_time" width="60" text="00:00:00" textcolor="#FFFFFFFF" font="0" />
+                    <VerticalLayout padding="10,0,10,0">
+                        <control />
+                        <Slider name="slider_progress" height="10" min="0" max="1000" value="0" tooltip="拖动调整进度"/>
+                        <control />
+                    </VerticalLayout>
+                    <Label name="lbl_total_time" width="60" text="00:00:00" textcolor="#FFFFFFFF" font="0" />
+                </HorizontalLayout>
+                
+                <HorizontalLayout height="40" bkcolor="#FF2D2D2D">
+                   <!-- 切换播放列表按钮 -->
+                    <Button name="btn_toggle_playlist" text="☰ 列表" textcolor="#FFFFFFFF" width="60" height="25" margin="10,5,0,0" normaltextcolor="#FFFFFFFF"/>
+                    <Control />
+                    <Button name="btn_play_pause" width="40" height="40" normalimage="file='play.png'" hotimage="file='play_hot.png'" pushedimage="file='play_pushed.png'" tooltip="播放 (Space)"/>
+                    
+                    <HorizontalLayout>
+                        <Control />
+                        <Button name="btn_open" text="打开文件" width="80" height="30" margin="0,0,10,0" normalimage="file='btn_normal.bmp'" hotimage="file='btn_hot.bmp'" pushedimage="file='btn_pushed.bmp'" textcolor="#FFFFFFFF" font="0" tooltip="选择视频文件"/>
+                    </HorizontalLayout>
+                </HorizontalLayout>
+            </VerticalLayout>
+            
+        </VerticalLayout>
+    </HorizontalLayout>
+</Window>

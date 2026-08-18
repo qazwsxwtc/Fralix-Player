@@ -143,13 +143,13 @@ LRESULT CVideoPlayerFrame::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam
 	{
         if (m_bIsPlaying)
         {
-if (!m_bShowControlBar && m_pBottomCtr) {
-			ShowControlBar(true);
-		}
+			if (!m_bShowControlBar && m_pBottomCtr) {
+				ShowControlBar(true);
+			}
 
-		// 重置自动隐藏定时器
-		KillTimer(m_hWnd, TIMER_ID_HIDE_BOTTOM);
-		SetTimer(m_hWnd, TIMER_ID_HIDE_BOTTOM, 5000, NULL); // 3秒后隐藏
+			// 重置自动隐藏定时器
+			KillTimer(m_hWnd, TIMER_ID_HIDE_BOTTOM);
+			SetTimer(m_hWnd, TIMER_ID_HIDE_BOTTOM, 5000, NULL); // 3秒后隐藏
         }
 		else
 		{
@@ -161,10 +161,6 @@ if (!m_bShowControlBar && m_pBottomCtr) {
 	}
     
 	break;
-    //case WM_CREATE:
-    //    //lRes = OnCreate(uMsg, wParam, lParam);
-    //    break;
-	  // 【新增】处理文件拖放
 	case WM_DROPFILES:
 	{
 		HDROP hDropInfo = (HDROP)wParam;
@@ -235,10 +231,6 @@ if (!m_bShowControlBar && m_pBottomCtr) {
 	}
     case WM_USER_PLAY_AUDIO:
     {
-		/*std::lock_guard<std::mutex> lock(m_audioClockMutex);
-		m_audioPlayer.PlayData(m_pPcmData, m_pcmDataSize);
-		memset(m_pPcmData, 0, m_pcmDataSize);
-		m_pcmDataSize = 0;*/
 		break;
 	}
 	case WM_USER_SEEK_COMPLETE:
@@ -260,7 +252,8 @@ if (!m_bShowControlBar && m_pBottomCtr) {
 			m_audioPlayer.Resume();
 			// 恢复进度条定时器
 			SetTimer(m_hWnd, TIMER_ID_UPDATE_PROGRESS, TIMER_INTERVAL_MS, NULL);
-
+			
+			
 			delete result;
 		}
 
@@ -271,6 +264,28 @@ if (!m_bShowControlBar && m_pBottomCtr) {
 		}
 		break;
 	}
+	case WM_USER_SCAN_COMPLETE:
+	{
+		//std::vector<std::string>* pFiles = reinterpret_cast<std::vector<std::string>*>(wParam);
+		//if (pFiles) {
+		//	for (const auto& path : *pFiles) {
+		//		// 转换为 wstring
+		//		std::wstring wPath(path.begin(), path.end()); // 简单转换，建议用 MultiByteToWideChar
+		//		AddToPlaylist(wPath);
+		//	}
+		//	delete pFiles;
+
+		//	
+		//}
+		//lRes = 0;
+		break;
+	}
+	case WM_ADDLISTITEM:
+	{
+		lRes = OnAddListItem(uMsg, wParam, lParam, bHandled); 
+
+		break;
+	}
     default:
         bHandled = FALSE;
     }
@@ -279,29 +294,6 @@ if (!m_bShowControlBar && m_pBottomCtr) {
     if (m_PaintManager.MessageHandler(uMsg, wParam, lParam, lRes)) return lRes;
     return WindowImplBase::HandleMessage(uMsg, wParam, lParam);
 }
-
-//LRESULT CVideoPlayerFrame::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam)
-//{
-    //WindowImplBase::OnCreate(uMsg, wParam, lParam);
-
-    // 初始化 PaintManager
- //   m_PaintManager.Init(m_hWnd);
-
-	//// 【关键】创建回调实例
-	//CCustomControlCallback callback;
- //   // 加载 XML
- //   CDialogBuilder builder;
- //   CControlUI* pRoot = builder.Create(_T("res/video_player.xml"), nullptr, &callback, &m_PaintManager);
- //   ASSERT(pRoot && "Failed to parse XML");
-
- //   m_PaintManager.AttachDialog(pRoot);
- //   m_PaintManager.AddNotifier(this);
-
- //   // 初始化窗口
- //   InitWindow();
-
-//    return 0;
-//}
 
 LRESULT CVideoPlayerFrame::OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -330,7 +322,7 @@ LRESULT CVideoPlayerFrame::OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 
-
+//
 void CVideoPlayerFrame::ShowControlBar(bool bShow)
 {
 	if (m_pBottomCtr) {
@@ -480,6 +472,17 @@ void CVideoPlayerFrame::InitRun()
 	m_pBtnOpen = static_cast<CButtonUI*>(m_PaintManager.FindControl(_T("btn_open")));
 	m_pBtnFullScreen = static_cast<CButtonUI*>(m_PaintManager.FindControl(_T("btn_fullscreen")));
 
+	// 初始化播放列表
+	m_pPlaylistList = static_cast<CListUI*>(m_PaintManager.FindControl(_T("playlist_list")));
+	m_pPlaylistPanel = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(_T("playlist_panel")));
+
+	if (!m_pPlaylistList) {
+		OutputDebugString(_T("ERROR: Playlist List not found!\n"));
+	}
+	if (!m_pPlaylistPanel) {
+		OutputDebugString(_T("ERROR: Playlist Panel not found!\n"));
+	}
+
 	m_pBottomCtr = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(_T("bottomctr")));
 	if (m_pBottomCtr) {
 		// 设置为浮动
@@ -489,29 +492,6 @@ void CVideoPlayerFrame::InitRun()
 		m_bShowControlBar = false; 
 	}
 
-	// 【新增】创建拖放提示标签
-	//m_pLblDropHint = static_cast<CLabelUI*>(m_PaintManager.FindControl(_T("lbl_vtips")));
-	//m_pLblDropHint->SetName(_T("lbl_drop_hint"));
-	//m_pLblDropHint->SetText(_T("请将视频文件拖放到此处播放"));
-	//m_pLblDropHint->SetTextColor(0xFFFFFFFF); // 白色文字
-	//m_pLblDropHint->SetFont(0); // 使用默认字体或指定字体
-	//m_pLblDropHint->SetVisible(false); // 初始隐藏
-
-	//// 将标签添加到根布局中，确保它在最上层
-	//// 注意：由于 MediaDisplay 是 HWND，普通 Label 可能被遮挡。
-	//// 但我们可以尝试将其添加为 MediaDisplay 的兄弟节点，并依靠 UpdateControlBarPos 的逻辑
-	//// 或者更简单：直接作为子控件添加到 m_pMediaDisplay 管理的 Duilib 树中（如果支持）
-	//// 鉴于 WndMediaDisplay 是自定义控件，我们通常将其视为一个黑盒。
-
-	//// 更好的方案：将提示标签添加到主窗口的 PaintManager 中，并设置为浮动
-	//if (m_PaintManager.GetRoot()) {
-	//	m_PaintManager.GetRoot()->Add(m_pLblDropHint);
-	//	m_pLblDropHint->SetFloat(true);
-	//	m_pLblDropHint->SetAttribute(_T("pos"), _T("0,0,0,0")); // 初始位置，稍后调整
-	//	m_pLblDropHint->SetAttribute(_T("bkcolor"), _T("#00000000")); // 透明背景
-	//	m_pLblDropHint->SetAttribute(_T("align"), _T("center"));
-	//	m_pLblDropHint->SetAttribute(_T("valign"), _T("center"));
-	//}
 
 	// 初始状态：未播放，显示提示
 	ShowDropHint(true);
@@ -534,6 +514,8 @@ void CVideoPlayerFrame::InitRun()
 	// 【关键】初始状态：未播放，所以不需要自动隐藏
 	m_bShowControlBar = true;
 	m_bIsPlaying = false; // 确保播放状态初始为假
+	
+	OnScanAllLibrary();
 }
 
 void CVideoPlayerFrame::InitWindow()
@@ -616,6 +598,11 @@ void CVideoPlayerFrame::Notify(TNotifyUI& msg)
         {
             SendMessage(WM_SYSCOMMAND, IsZoomed(m_hWnd) ? SC_RESTORE : SC_MAXIMIZE, 0);
         }
+		else if (msg.pSender->GetName() == _T("btn_toggle_playlist") ||
+			msg.pSender->GetName() == _T("btn_close_playlist"))
+		{
+			TogglePlaylistVisibility();
+		}
     }
     else if (msg.sType == _T("valuechanged"))
     {
@@ -639,6 +626,17 @@ void CVideoPlayerFrame::Notify(TNotifyUI& msg)
             SetVolume(nVol);
         }
     }
+	else if (_tcsicmp(msg.sType, _T("itemclick")) == 0)
+	{
+		if (msg.pSender) {
+			// 获取点击的 Item
+			CListLabelElementUI* pItem = static_cast<CListLabelElementUI*>(msg.pSender);
+			if (pItem) {
+				int index = static_cast<int>(pItem->GetTag());
+				PlayByIndex(index);
+			}
+		}
+	}
 }
 
 void CVideoPlayerFrame::Play()
@@ -890,8 +888,6 @@ bool CVideoPlayerFrame::OpenFile(const std::wstring& filePath)
 	// 假设你有一个进度条控件 m_pProgress
 	if (m_pSliderProgress) {
 		// 设置进度条范围为 0 - 总秒数 * 1000 (毫秒) 或者直接用秒
-       /* m_pSliderProgress->SetMin(0);
-        m_pSliderProgress->SetMax((int)(totalSeconds * 1000));*/
         m_pSliderProgress->SetValue(0);
 	}
 
@@ -905,15 +901,10 @@ bool CVideoPlayerFrame::OpenFile(const std::wstring& filePath)
     AdjustVideoLayout(vWidth, vHeight);
 
     m_pFFmpegEngine->SetAudioCallback([this](uint8_t* data, int nb_samples, int channels, int sample_rate) {
-        if (m_pMediaDisplay) {
-           
-            {
-		
-				m_audioPlayer.FeedData(data, nb_samples);
-				
-            }
-			//int iMicSecond = 1000 * nb_samples * 1.0 / sample_rate;
-			//std::this_thread::sleep_for(std::chrono::milliseconds(iMicSecond));
+        if (m_pMediaDisplay) 
+		{
+			m_audioPlayer.FeedData(data, nb_samples);
+
         }
     });
 
@@ -921,13 +912,9 @@ bool CVideoPlayerFrame::OpenFile(const std::wstring& filePath)
     // 4. 设置视频回调
     m_pFFmpegEngine->SetVideoCallback([this](uint8_t* data, int w, int h, int linesize) {
         if (m_pMediaDisplay) {
-
             // 【关键】如果视频分辨率发生变化（极少见），或者为了确保布局正确，可以再次调用
            // 为了性能通常只在第一帧或分辨率改变时调用 AdjustVideoLayout
-
-
             m_pMediaDisplay->RenderFrame(data, w, h, PIXEL_FORMAT_RGB24);
-
         }
     });
 
@@ -963,6 +950,7 @@ void CVideoPlayerFrame::OnPlayEnd()
     
     // 2. 更新 UI 状态
     m_bIsPlaying = false;
+	m_bIsPaused = false;
     UpdatePlayPauseIcon();
   
     // 3. 重置进度条
@@ -975,14 +963,31 @@ void CVideoPlayerFrame::OnPlayEnd()
 
     ShowDropHint(true);
 
-    // 4. 可选：弹出提示或自动重播
-    // MessageBox(m_hWnd, L"播放结束", L"提示", MB_OK);
-    
-    // 如果要自动重播，可以调用：
-    // Seek(0);
-    // Play();
+	Stop();
+
+
+	if (m_pFFmpegEngine) {
+		delete m_pFFmpegEngine;
+		m_pFFmpegEngine = nullptr;
+	}
+	// 4. 【新增】自动播放下一个
+	PlayNextInPlaylist();
 }
 
+void CVideoPlayerFrame::PlayNextInPlaylist()
+{
+	if (m_playlistPaths.empty()) return;
+
+	int nextIndex = m_nCurrentPlayIndex + 1;
+
+	// 循环播放：如果是最后一个，回到第一个
+	if (nextIndex >= (int)m_playlistPaths.size()) {
+		nextIndex = 0;
+	}
+
+	// 播放
+	PlayByIndex(nextIndex);
+}
 
 void CVideoPlayerFrame::AdjustVideoLayout(int videoWidth, int videoHeight)
 {
@@ -1044,19 +1049,39 @@ void CVideoPlayerFrame::SetWindowSize(int nWidth, int nHeight)
 {
     if (m_hWnd == nullptr) return;
 
-    // 获取当前窗口位置
-    RECT rcWnd;
-    ::GetWindowRect(m_hWnd, &rcWnd);
-    
-    // 计算新的左上角坐标，保持窗口中心不变
-    int cx = (rcWnd.left + rcWnd.right) / 2;
-    int cy = (rcWnd.top + rcWnd.bottom) / 2;
-    
-    int newX = cx - nWidth / 2;
-    int newY = cy - nHeight / 2;
+	// 获取当前屏幕工作区大小
+	RECT rcWorkArea;
+	SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWorkArea, 0);
 
-    // 调整窗口大小
-    ::SetWindowPos(m_hWnd, NULL, newX, newY, nWidth, nHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+	// 计算居中位置
+	int x = rcWorkArea.left + (rcWorkArea.right - rcWorkArea.left - nWidth) / 2;
+	int y = rcWorkArea.top + (rcWorkArea.bottom - rcWorkArea.top - nHeight) / 2;
+
+	if (x < 0)
+	{
+        x = 0;
+	}
+	if (y < 0)
+	{
+        y = 0;
+	}
+
+	// 设置窗口位置和大小
+	::SetWindowPos(m_hWnd, NULL, x, y, nWidth, nHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+
+    //// 获取当前窗口位置
+    //RECT rcWnd;
+    //::GetWindowRect(m_hWnd, &rcWnd);
+    //
+    //// 计算新的左上角坐标，保持窗口中心不变
+    //int cx = (rcWnd.left + rcWnd.right) / 2;
+    //int cy = (rcWnd.top + rcWnd.bottom) / 2;
+    //
+    //int newX = cx - nWidth / 2;
+    //int newY = cy - nHeight / 2;
+
+    //// 调整窗口大小
+    //::SetWindowPos(m_hWnd, NULL, newX, newY, nWidth, nHeight, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 void CVideoPlayerFrame::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -1096,6 +1121,7 @@ void CVideoPlayerFrame::SeekAsync(int nPos)
     double percent = static_cast<double>(nPos) / 1000.0;
     int targetMs = static_cast<int>(m_nTotalDuration * percent);
 
+	
     // 2. 【耗时操作】在后台线程执行底层 Seek
     // 这包括 av_seek_frame, flush_buffers, 以及 CAudioPlayer::Restart()
     m_pFFmpegEngine->Seek(targetMs);
@@ -1118,33 +1144,156 @@ void CVideoPlayerFrame::SeekAsync(int nPos)
     ::PostMessage(m_hWnd, WM_USER_SEEK_COMPLETE, (WPARAM)result, 0);
 }
 
-//void CVideoPlayerFrame::ShowDropHint(bool bShow)
-//{
-//    if (!m_pLblDropHint) return;
 //
-//    if (bShow) {
-//        // 计算视频区域的中心位置
-//        RECT rcClient;
-//        ::GetClientRect(m_hWnd, &rcClient);
-//        
-//        // 假设视频区域占满除底部控制栏外的所有空间
-//        int nBottomHeight = 60;
-//        int videoH = rcClient.bottom - rcClient.top - nBottomHeight;
-//        
-//        // 设置标签位置和大小，使其居中于视频区域
-//        // 这里简化处理，让标签填满视频区域，文字居中
-//        m_pLblDropHint->SetPos(RECT{ 0, 0, rcClient.right, videoH });
-//        m_pLblDropHint->SetVisible(true);
-//        
-//        // 确保标签在最顶层 (Z-Order)
-//        /*m_pLblDropHint->BringToFront();*/
-//    } else {
-//        m_pLblDropHint->SetVisible(false);
-//    }
-//}
-
 void CVideoPlayerFrame::ShowDropHint(bool bShow) {
 	if (m_pMediaDisplay) {
 		m_pMediaDisplay->ShowHint(bShow);
 	}
+}
+
+void CVideoPlayerFrame::ScanLibrary() {
+//	// 1. 选择扫描根目录 (例如用户的主目录或特定文件夹)
+//#ifdef _WIN32
+//	std::string root = "D:\\Videos"; // Windows 示例
+//#else
+//	std::string root = "/home/user/Videos"; // Linux/Mac 示例
+//#endif
+//
+//	std::cout << "Start scanning..." << std::endl;
+//
+//	// 2. 执行扫描 (限制深度为 5 层，防止扫描整个磁盘耗时过长)
+//	std::vector<std::string> videos = VideoScanner::Scan(root, 5);
+//
+//	std::cout << "Found " << videos.size() << " video files." << std::endl;
+//
+//	// 3. 处理结果 (例如添加到播放列表)
+//	for (const auto& path : videos) {
+//		std::wstring wPath(path.begin(), path.end()); // 简单转换，实际建议用 UTF-8 转换工具
+//		std::wcout << L"  - " << wPath << std::endl;
+//
+//		// m_playlist.Add(wPath); 
+//	}
+}
+
+
+void CVideoPlayerFrame::TogglePlaylistVisibility()
+{
+	if (m_pPlaylistPanel) {
+		bool isVisible = m_pPlaylistPanel->IsVisible();
+		m_pPlaylistPanel->SetVisible(!isVisible);
+
+		// 关键：通知 PaintManager 重新计算布局
+		m_PaintManager.NeedUpdate();
+
+		// 如果视频正在播放，可能需要调整视频窗口大小以填补空缺
+		if (m_bIsPlaying && m_pFFmpegEngine) {
+			AdjustVideoLayout(m_pFFmpegEngine->GetWidth(), m_pFFmpegEngine->GetHeight());
+		}
+		// 然后手动同步 HWND
+			if (m_pMediaDisplay) {
+				RECT rc = m_pMediaDisplay->GetPos(); // 获取 Duilib 计算后的新位置
+				HWND hVideoWnd = m_pMediaDisplay->GetRenderHwnd();
+				if (hVideoWnd) {
+					::SetWindowPos(hVideoWnd, NULL, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER | SWP_NOACTIVATE);
+				}
+			}
+	}
+}
+
+
+//
+void CVideoPlayerFrame::PlayByIndex(int index)
+{
+    if (index < 0 || index >= (int)m_playlistPaths.size()) return;
+    
+    m_nCurrentPlayIndex = index;
+    OpenFile(m_playlistPaths[index]);
+    //UpdatePlaylistUI(); // 更新高亮
+}
+
+LRESULT CVideoPlayerFrame::OnAddListItem(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+{
+	std::string* pStrPath = reinterpret_cast<std::string*>(lParam);
+	if (!pStrPath) return 0;
+
+	// 2. 获取字符串内容
+	std::string strPath = *pStrPath;
+
+	// 3. 【关键】释放内存，防止内存泄漏
+	delete pStrPath;
+
+	std::wstring path = UTF8ToWString(strPath);
+
+	if (std::find(m_playlistPaths.begin(), m_playlistPaths.end(), path) != m_playlistPaths.end())
+	{
+		//m_playlistPaths.find(path) == m_playlistPaths.end()
+		return -1;
+	}
+	m_playlistPaths.push_back(path);
+	size_t pos = path.find_last_of(L"\\/");
+	std::wstring fileName = (pos != std::wstring::npos) ? path.substr(pos + 1) : path;
+	// 6. 创建并添加列表项
+	if (m_pPlaylistList) {
+		CListLabelElementUI* pListElement = new CListLabelElementUI();
+        pListElement->SetTag(m_playlistPaths.size() - 1);
+		pListElement->SetText(fileName.c_str());
+		pListElement->SetToolTip(path.c_str());
+		//pListElement->SetUserData(fileName.c_str());
+		pListElement->SetBkColor(0xFFFFFFFF);
+		pListElement->SetAttribute(_T("textcolor"), _T("#FF000000"));
+		//pListElement->SetAttribute(_T("textcolor"), _T("#FF000000"));
+		// 设置颜色回调（可选，确保文字可见）
+		//pListElement->SetTextCallback([](CControlUI* pCtrl, int nIndex, UINT uState) -> DWORD {
+		//	if (uState & UISTATE_SELECTED) return 0xFF00BFFF;
+		//	if (uState & UISTATE_HOT) return 0xFFDDDDDD;
+		//	return 0xFFFFFFFF; // 默认白色
+		//});
+
+		m_pPlaylistList->Add(pListElement);
+	}
+	return 0;
+}
+
+void CVideoPlayerFrame::OnScanLibraryOne()
+{
+	
+}
+
+// 扫描文件
+void CVideoPlayerFrame::OnScanAllLibrary()
+{
+	// 启动后台线程
+	std::thread([this]() {
+		std::vector<std::string> drives = CVideoScanner::GetAllDrives();
+		std::vector<std::string> allVideos;
+		std::mutex mtx;
+
+		std::vector<std::thread> threads;
+		for (const auto& drive : drives) {
+			threads.emplace_back([&, drive]() {
+				std::vector<std::string> local;
+				// 扫描该磁盘，深度限制为 5 层以加快速度，或者 -1 全盘
+				CVideoScanner::ScanDirectory(drive, 0, -1, local, nullptr);
+
+				std::lock_guard<std::mutex> lock(mtx);
+				allVideos.insert(allVideos.end(), local.begin(), local.end());
+			});
+		}
+		 
+		for (auto& t : threads) if (t.joinable()) t.join();
+
+		/*std::sort(allVideos.begin(), allVideos.end());*/
+
+
+		for (auto& path : allVideos)
+		{
+			auto * pData = new std::string(std::move(path));
+			::PostMessage(m_hWnd, WM_ADDLISTITEM, 0, (LPARAM)pData);
+		}
+		// 发送完成消息，携带所有文件路径
+		// 注意：大数据量拷贝可能慢，建议用指针或共享指针
+		//auto* pData = new std::vector<std::string>(std::move(allVideos));
+		
+
+	}).detach();
 }
