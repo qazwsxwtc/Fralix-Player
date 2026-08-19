@@ -293,3 +293,42 @@ double CAudioPlayer::GetCurrentLatencySeconds() const {
 
 	return latencySec;
 }
+
+void CAudioPlayer::SetVolume(float vol) {
+    if (vol < 0.0f) vol = 0.0f;
+    if (vol > 2.0f) vol = 2.0f;
+    m_volume = vol;
+
+	// 【关键】如果流已创建，直接设置流的增益
+	// SDL_SetAudioStreamGain 是线程安全的，且由 SDL 内部优化处理
+	if (m_pAudioStream) {
+		SDL_SetAudioStreamGain(m_pAudioStream, m_volume);
+	}
+}
+
+// 在你的音频回调函数中 (例如 SDL_AudioCallback 或自定义线程循环)
+// 假设 data 是待播放的 PCM 数据 (例如 S16LE 格式)
+// nb_samples 是样本数
+void CAudioPlayer::OnAudioData(uint8_t* data, int size) {
+    if (m_volume == 1.0f) return; // 无需处理
+
+    // 假设是 16-bit signed integer (S16)
+    int16_t* samples = (int16_t*)data;
+    int numSamples = size / 2; // 2 bytes per sample for S16
+
+    for (int i = 0; i < numSamples; ++i) {
+        // 应用音量增益
+        float sampleFloat = static_cast<float>(samples[i]);
+        sampleFloat *= m_volume;
+        
+        // 防止溢出 (Clipping)
+        if (sampleFloat > 32767.0f) sampleFloat = 32767.0f;
+        if (sampleFloat < -32768.0f) sampleFloat = -32768.0f;
+        
+        samples[i] = static_cast<int16_t>(sampleFloat);
+    }
+    
+    // 如果是 float 格式或其他格式，逻辑类似，只是数据类型不同
+}
+
+

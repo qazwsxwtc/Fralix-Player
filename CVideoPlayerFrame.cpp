@@ -466,11 +466,34 @@ void CVideoPlayerFrame::InitRun()
 	m_pLblCurrTime = static_cast<CLabelUI*>(m_PaintManager.FindControl(_T("lbl_curr_time")));
 	m_pLblTotalTime = static_cast<CLabelUI*>(m_PaintManager.FindControl(_T("lbl_total_time")));
 	m_pSliderProgress = static_cast<CSliderUI*>(m_PaintManager.FindControl(_T("slider_progress")));
-	m_pSliderVolume = static_cast<CSliderUI*>(m_PaintManager.FindControl(_T("slider_volume")));
+	
 	m_pBtnPlayPause = static_cast<CButtonUI*>(m_PaintManager.FindControl(_T("btn_play_pause")));
 	m_pBtnStop = static_cast<CButtonUI*>(m_PaintManager.FindControl(_T("btn_stop")));
 	m_pBtnOpen = static_cast<CButtonUI*>(m_PaintManager.FindControl(_T("btn_open")));
 	m_pBtnFullScreen = static_cast<CButtonUI*>(m_PaintManager.FindControl(_T("btn_fullscreen")));
+
+	// 【新增】查找音量控件
+	m_pBtnVolume = static_cast<CButtonUI*>(m_PaintManager.FindControl(_T("btn_volume")));
+	m_pSliderVolume = static_cast<CSliderUI*>(m_PaintManager.FindControl(_T("slider_volume")));
+	m_pVolumePanel = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(_T("volume_panel")));
+	
+	// 初始化音量
+	m_nCurrentVolume = 50;
+	if (m_pSliderVolume) {
+		// 【关键修复】手动强制设置为垂直模式
+		m_pSliderVolume->SetAttribute(_T("hor"), _T("false"));
+
+		m_pSliderVolume->SetFixedWidth(10);
+		m_pSliderVolume->SetFixedHeight(100);
+		// 确保滑块大小适合垂直显示
+		m_pSliderVolume->SetThumbSize(SIZE{ 10, 10 });
+
+		// 设置初始值
+		m_pSliderVolume->SetValue(100);
+
+		// 强制刷新该控件的布局
+		m_pSliderVolume->NeedUpdate();
+	}
 
 	// 初始化播放列表
 	m_pPlaylistList = static_cast<CListUI*>(m_PaintManager.FindControl(_T("playlist_list")));
@@ -602,6 +625,10 @@ void CVideoPlayerFrame::Notify(TNotifyUI& msg)
 			msg.pSender->GetName() == _T("btn_close_playlist"))
 		{
 			TogglePlaylistVisibility();
+		}
+		else if (msg.pSender == m_pBtnVolume)
+		{
+			ToggleVolumePanel();
 		}
     }
     else if (msg.sType == _T("valuechanged"))
@@ -747,7 +774,29 @@ void CVideoPlayerFrame::Seek(int nPos)
 
 void CVideoPlayerFrame::SetVolume(int nVol)
 {
-    
+	if (nVol < 0) nVol = 0;
+	if (nVol > 200) nVol = 200;
+
+	m_nCurrentVolume = nVol;
+
+	// 映射到 0.0 - 1.0
+	float volumeFloat = static_cast<float>(nVol) / 100.0f;
+
+	// 调用 SDL3 封装层的设置
+	m_audioPlayer.SetVolume(volumeFloat);
+
+	// 更新按钮图标（可选）
+	if (m_pBtnVolume) {
+		if (nVol == 0) {
+			m_pBtnVolume->SetText(_T("🔇")); // 静音图标
+		}
+		else if (nVol < 50) {
+			m_pBtnVolume->SetText(_T("🔉")); // 低音量
+		}
+		else {
+			m_pBtnVolume->SetText(_T("🔊")); // 高音量
+		}
+	} 
 }
 
 void CVideoPlayerFrame::ToggleFullScreen()
@@ -1296,4 +1345,40 @@ void CVideoPlayerFrame::OnScanAllLibrary()
 		
 
 	}).detach();
+}
+
+void CVideoPlayerFrame::ToggleVolumePanel()
+{
+    if (!m_pVolumePanel || !m_pBtnVolume) return;
+
+    bool isVisible = m_pVolumePanel->IsVisible();
+    
+    // 切换可见性
+    m_pVolumePanel->SetVisible(!isVisible);
+
+    // 如果即将显示，则动态调整位置到按钮附近
+    if (!isVisible) {
+        // 1. 获取音量按钮相对于窗口客户区的位置
+        RECT rcBtn = m_pBtnVolume->GetPos();
+        
+        // 2. 计算面板位置 (默认在按钮上方)
+        int panelWidth = 10;  // 与 XML 中 slider 宽度一致或稍宽
+        int panelHeight = 100; // 与 XML 中 slider 高度一致
+        int spacing = 0;       // 间距
+
+        int panelX = rcBtn.left + (rcBtn.right - rcBtn.left - panelWidth) / 2; // 水平居中对齐按钮
+        int panelY = rcBtn.top - panelHeight - spacing;
+
+        // 3. 边界检查：如果上方空间不足，则显示在按钮下方
+        if (panelY < 0) {
+            panelY = rcBtn.bottom + spacing;
+        }
+
+        // 4. 设置面板的新位置和大小
+        // 注意：SetPos 会立即更新控件的矩形区域
+        m_pVolumePanel->SetPos(RECT{ panelX, panelY, panelX + panelWidth, panelY + panelHeight });
+        
+        // 5. 强制刷新布局，确保子控件（Slider）正确重绘
+        m_pVolumePanel->NeedUpdate();
+    }
 }

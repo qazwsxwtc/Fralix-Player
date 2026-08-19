@@ -83,7 +83,7 @@ protected:
 	void PlayByIndex(int index);
     void PlayNextInPlaylist();
     LRESULT OnAddListItem(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-
+    void ToggleVolumePanel();
 private:
     // === UI 控件指针缓存 ===
    // CPaintManagerUI m_PaintManager;
@@ -101,7 +101,7 @@ private:
     CButtonUI*  m_pBtnFullScreen = nullptr;
     CListUI* m_pPlaylistList = nullptr;
     CVerticalLayoutUI* m_pPlaylistPanel = nullptr;
-
+    CVerticalLayoutUI* m_pVolumePanel = nullptr;
    CWndMediaDisplay* m_pMediaDisplay = nullptr;
     // === 播放状态 ===
     bool m_bIsPlaying;
@@ -137,6 +137,10 @@ private:
     std::vector<std::wstring> m_playlistPaths;
     int  m_nCurrentPlayIndex = -1;
 	
+	// ... 其他成员 ...
+	CButtonUI* m_pBtnVolume;      // 音量按钮
+	//CSliderUI* m_pSliderVolume;   // 音量滑动条
+	int m_nCurrentVolume;         // 当前音量值 (0-100)
 };
 
 #endif // CVideoPlayerFrame_H

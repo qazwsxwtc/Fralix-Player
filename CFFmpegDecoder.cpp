@@ -512,7 +512,7 @@ void CFFmpegDecoder::VideoDecodeLoop()
     AVPacket* packet = nullptr;
 
     while (!m_bStopThreads) {
-	
+		
 		// 定义中断回调：如果暂停或停止，则中断 Pop 的等待
 		auto interruptFn = [this]() {
 			return m_bPaused.load() || m_bStopThreads;
@@ -603,7 +603,6 @@ void CFFmpegDecoder::AudioDecodeLoop()
     AVPacket* packet = nullptr;
 
     while (!m_bStopThreads) {
-		
 		// 定义中断回调：如果暂停或停止，则中断 Pop 的等待
 		auto interruptFn = [this]() {
 			return m_bPaused.load() || m_bStopThreads;

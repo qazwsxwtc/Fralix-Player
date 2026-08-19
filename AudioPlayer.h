@@ -50,6 +50,9 @@ public:
 	void Pause();
 	void Resume();
 
+	void SetVolume(float vol); // vol 范围 0.0 - 1.0
+	float GetVolume() const { return m_volume; }
+    void OnAudioData(uint8_t* data, int size);
 private:
     SDL_AudioDeviceID m_audioDevID = 0;
     SDL_AudioStream* m_pAudioStream = nullptr;
@@ -70,6 +73,8 @@ private:
 	int m_channels = 2;
     // 【可选】如果需要更严格的线程安全，可以添加一个互斥锁保护 m_spec 等状态
     // std::mutex m_mutex;
+
+    float m_volume = 1.0f; // 默认最大音量
 };
 
 #endif // _AUDIOPLAYER_H
