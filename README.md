@@ -12,11 +12,11 @@ Self‑developed Windows media player, based on Duilib + FFmpeg + SDL3
 # Runtime Directory Structure
 ![Fralix‑Player Runtime Directory Structure](./assets/runpath.png)
 
-# play video
+### play video
 ![Fralix‑Player play video](./assets/playvideo.png)
 
 
-## Quick Start
+### Quick Start
 - download ffmpeg 
 	https://github.com/FFmpeg/FFmpeg/releases/tag/n8.1.2
 	https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-full_build.7z

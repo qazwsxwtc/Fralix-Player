@@ -11,10 +11,10 @@
 - 支持常见媒体格式
 
 ## 介绍
-# 运行目录结构
+### 运行目录结构
 ![Fralix‑Player 运行目录](./assets/runpath.png)
 
-# 视频播放
+### 视频播放
 ![Fralix‑Player 视频播放](./assets/playvideo.png)
 
 ## 🚀 快速构建
