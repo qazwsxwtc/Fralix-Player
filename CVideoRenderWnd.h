@@ -1,7 +1,7 @@
 #ifndef CVideoRenderWnd_h
 #define CVideoRenderWnd_h
 
-#include "..\DuiLib\UIlib.h"
+#include "include\DuiLib\UIlib.h"
 #include <windows.h>
 #include "CCommonTypedef.h"
 

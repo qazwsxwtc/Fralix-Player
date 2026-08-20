@@ -1,6 +1,6 @@
 #include "CVideoPlayerFrame.h"
 #include "WndMediaDisplay.h"
-#include "..\DuiLib\Core\UIDlgBuilder.h"
+#include "include\DuiLib\Core\UIDlgBuilder.h"
 
 // 自定义控件创建回调
 CControlUI* CustomControlFactory(LPCTSTR pstrClass, void* pManager)

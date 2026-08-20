@@ -2,7 +2,7 @@
 #define CVideoPlayerFrame_H
 
 
-#include "..\DuiLib\UIlib.h"
+#include "include\DuiLib\UIlib.h"
 #include <string>
 #include <windows.h>
 #include "CVideoRenderWnd.h"

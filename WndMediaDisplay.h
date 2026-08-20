@@ -1,5 +1,5 @@
 #pragma once
-#include "..\DuiLib\UIlib.h"
+#include "include\DuiLib\UIlib.h"
 #include "CCommonTypedef.h" // 假设这里定义了 VideoPixelFormat
 
 using namespace DuiLib;

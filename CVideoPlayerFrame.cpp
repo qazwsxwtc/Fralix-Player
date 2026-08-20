@@ -6,7 +6,7 @@
 #include <iomanip>
 #include <commctrl.h>
 #include "WndMediaDisplay.h"
-#include "..\DuiLib\Core\UIDlgBuilder.h" // 确保包含此头文件
+#include "include\DuiLib\Core\UIDlgBuilder.h" // 确保包含此头文件
 
 
 // 自定义控件创建回调

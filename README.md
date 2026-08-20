@@ -9,20 +9,24 @@ Self‑developed Windows media player, based on Duilib + FFmpeg + SDL3
 - Duilib UI
 
 ## Quick Start
-- please set FFMPEG_INCLUDE_DIR / FFMPEG_LIB_DIR / SDL3_INCLUDE_DIR / 
-	SDL3_LIB_DIR/DUILIB_INCLUDE_DIR/DUILIB_LIBRARY path first.
-
-download ffmpeg https://github.com/FFmpeg/FFmpeg/releases/tag/n8.1.2
+- download ffmpeg 
+	https://github.com/FFmpeg/FFmpeg/releases/tag/n8.1.2
 	https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-8.1.2-full_build.7z
 
-download SDL3 https://github.com/libsdl-org/SDL/releases   
+- download SDL3 
+	https://github.com/libsdl-org/SDL/releases   
 	SDL3-devel-3.4.14-VC.zip
+	
+- download duilib git 
+	https://github.com/duilib/duilib.git
 
+- Copy all library files under the dll directory and the entire res folder to the runtime directory of Fralix‑Player.exe
+-   Directory structure:
+--   Fralix-Player
+--   xxx.dll
+--   res
 
 ```bash
-git https://github.com/duilib/duilib.git
- set duilib path
-
 git clone https://github.com/qazwsxwtc/Fralix‑Player.git
 cd Fralix‑Player
 
