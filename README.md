@@ -9,7 +9,8 @@ Self‑developed Windows media player, based on Duilib + FFmpeg + SDL3
 - Duilib UI
 
 ## Introduce
-# Runtime Directory Structure
+
+### Runtime Directory Structure
 ![Fralix‑Player Runtime Directory Structure](./assets/runpath.png)
 
 ### play video

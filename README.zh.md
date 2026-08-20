@@ -11,6 +11,7 @@
 - 支持常见媒体格式
 
 ## 介绍
+
 ### 运行目录结构
 ![Fralix‑Player 运行目录](./assets/runpath.png)
 
