@@ -1157,9 +1157,6 @@ void CVideoPlayerFrame::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 void CVideoPlayerFrame::SeekAsync(int nPos)
 {
-    // 【可选】性能监控
-    auto start = std::chrono::high_resolution_clock::now();
-
     {
         std::lock_guard<std::mutex> lock(m_seekMutex);
         if (m_bIsSeeking) return; // 如果上一次 Seek 还没完成，忽略本次请求（或排队）
@@ -1179,15 +1176,11 @@ void CVideoPlayerFrame::SeekAsync(int nPos)
 	
     // 2. 【耗时操作】在后台线程执行底层 Seek
     // 这包括 av_seek_frame, flush_buffers, 以及 CAudioPlayer::Restart()
-    m_pFFmpegEngine->Seek(targetMs);
+    m_pFFmpegEngine->Seek(targetMs);//里面已经重置音频
 
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> duration = end - start;
-    std::cout << "[Perf] Async Seek execution time: " << duration.count() << " ms" << std::endl;
+   
 
   
-	// 3. 确保音频播放器也重置
-	m_audioPlayer.Flush(); // 或者 Restart()
 	m_bIsPaused = false;
 	m_bIsPlaying = true;
 	UpdatePlayPauseIcon();

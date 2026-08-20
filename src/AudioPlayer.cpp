@@ -65,10 +65,11 @@ bool CAudioPlayer::Init(int sampleRate, int channels) {
 
 void CAudioPlayer::Stop() {
     if (!m_isInitialized.load()) return;
+	m_isInitialized.store(false);
     if (m_pAudioStream) SDL_DestroyAudioStream(m_pAudioStream);
     if (m_audioDevID) SDL_CloseAudioDevice(m_audioDevID);
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
-    m_isInitialized.store(false);
+    
 }
 
 
@@ -217,7 +218,7 @@ double CAudioPlayer::GetPreciseClock() {
 
 void CAudioPlayer::Flush() {
 	if (!m_isInitialized.load() || !m_pAudioStream) return;
-
+	
 	// 【强力模式】解绑流，清空，再重新绑定
 	// 这会彻底清除硬件和软件缓冲中的所有残留数据
 
@@ -245,7 +246,7 @@ void CAudioPlayer::Flush() {
 
 void CAudioPlayer::Restart() {
     if (!m_isInitialized.load()) return;
-
+	/*std::lock_guard<std::mutex> lock(m_mutex);*/
     // 1. 保存当前的配置参数
     int freq = m_spec.freq;
     int channels = m_spec.channels;
