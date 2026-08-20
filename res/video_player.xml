@@ -76,9 +76,11 @@ thumbhotimage="file='thumb.bmp' source='10,0,20,10' mask='#FFDAEBF9'" />
                     <Button name="btn_volume" text="🔊" width="30" height="30" textcolor="#FFFFFFFF" tooltip="音量"/>
                     
                     <Control /> <!-- 占位，把后面的按钮推到右边 -->
-                    
+                  <Button name="btn_rewind" text="⏪" width="30" height="30" textcolor="#FFFFFFFF" tooltip="快退10s"/>
                     <Button name="btn_play_pause" width="40" height="40" normalimage="file='play.png'" hotimage="file='play_hot.png'" pushedimage="file='play_pushed.png'" tooltip="播放 (Space)"/>
-                    
+                  <!-- 在底部控制栏添加 -->
+                
+                  <Button name="btn_forward" text="⏩" width="30" height="30" textcolor="#FFFFFFFF" tooltip="快进10s"/>
                     <HorizontalLayout>
                         <Control />
                         <Button name="btn_open" text="打开文件" width="80" height="30" margin="0,0,10,0" normalimage="file='btn_normal.bmp'" hotimage="file='btn_hot.bmp'" pushedimage="file='btn_pushed.bmp'" textcolor="#FFFFFFFF" font="0" tooltip="选择视频文件"/>
@@ -87,18 +89,5 @@ thumbhotimage="file='thumb.bmp' source='10,0,20,10' mask='#FFDAEBF9'" />
             </VerticalLayout>
             
         </VerticalLayout>
-      <!-- ================= 【关键修改】顶层浮动音量面板 ================= -->
-    <!-- 必须放在 Window 直接子节点，才能正确浮动 -->
-    <!-- pos="800,450,820,550" 表示在右下角附近，宽20，高100 -->
-    <VerticalLayout name="volume_panel" visible="false" float="true" pos="800,450,810,550" bkcolor="#FF333333" bordersize="1" bordercolor="#FF555555">
-        <!-- 垂直滑动条 -->
-        <Slider name="slider_volume" width="10" height="100" min="0" max="200" value="100" hor="false" tooltip="调节音量" thumbsize="10,10" 
-bkimage="file='bgv.bmp' corner='0,5,0,5' mask='#FFFF00FF'" 
-foreimage="file='fgv.bmp' corner='0,5,0,5' mask='#FFFF00FF'" 
-thumbimage="file='thumbv.bmp' source='0,0,10,10' mask='#FFDAEBF9' corner='2,2,2,2'" 
-thumbhotimage="file='thumbv.bmp' source='0,10,10,20' mask='#FFDAEBF9' corner='2,2,2,2'"    
-thumbpushedimage="file='thumbv.bmp' source='0,20,10,30' corner='2,2,2,2'" 
-                  />
-    </VerticalLayout>
     </HorizontalLayout>
 </Window>

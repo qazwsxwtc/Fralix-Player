@@ -163,6 +163,7 @@ CWndMediaDisplay::~CWndMediaDisplay()
 		delete[] m_pRawData;
 		m_pRawData = nullptr;
 	}
+	if (m_pCachedData) delete[] m_pCachedData;
 }
 
 void CWndMediaDisplay::DoInit()
@@ -412,4 +413,35 @@ void CWndMediaDisplay::DrawFrameGDI(const uint8_t* pData, int width, int height,
 bool CWndMediaDisplay::GetShowHint()
 {
 	return m_bShowHint;
+}
+
+void CWndMediaDisplay::RenderFrameAndCache(uint8_t* pData, int w, int h, VideoPixelFormat fmt)
+{
+	if (!pData || w <= 0 || h <= 0) return;
+
+	// 1. 释放旧缓存
+	if (m_pCachedData) {
+		delete[] m_pCachedData;
+		m_pCachedData = nullptr;
+	}
+
+	// 2. 拷贝新数据到缓存
+	int size = w * h * 3; // 假设 RGB24
+	m_pCachedData = new uint8_t[size];
+	memcpy(m_pCachedData, pData, size);
+
+	m_nCachedWidth = w;
+	m_nCachedHeight = h;
+	m_cachedFmt = fmt;
+
+	// 3. 执行实际渲染
+	RenderFrame(pData, w, h, fmt);
+}
+
+void CWndMediaDisplay::RenderCachedFrame()
+{
+	if (m_pCachedData && m_nCachedWidth > 0 && m_nCachedHeight > 0) {
+		// 直接渲染缓存中的数据，不更新缓存
+		RenderFrame(m_pCachedData, m_nCachedWidth, m_nCachedHeight, m_cachedFmt);
+	}
 }

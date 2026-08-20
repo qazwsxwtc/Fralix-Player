@@ -7,7 +7,7 @@
 #include <thread>
 #include <mutex>
 #include <functional>
-
+#include <atomic>
 #ifdef _WIN32
     #include <windows.h>
 #else
@@ -17,20 +17,34 @@
 
 class CVideoScanner {
 public:
-    static const std::set<std::string> VIDEO_EXTENSIONS;
+	// 【单例核心】获取唯一实例
+	static CVideoScanner& GetInstance();
 
-    // 【新增】扫描所有磁盘的视频文件
-    // callback: 每找到一个文件就回调一次，用于实时更新UI
-    static void ScanAllDrives(std::function<void(const std::string&)> onFileFound);
+	// 禁止拷贝构造和赋值操作，确保单例唯一性
+	CVideoScanner(const CVideoScanner&) = delete;
+	CVideoScanner& operator=(const CVideoScanner&) = delete;
 
-    // 原有的单目录扫描
-    static void ScanDirectory(const std::string& path, int currentDepth, int maxDepth, 
-                              std::vector<std::string>& results, 
-                              std::function<void(const std::string&)> onFileFound);
-    
-    static bool IsVideoFile(const std::string& filePath);
-    static std::string GetLowerExtension(const std::string& filePath);
-    
-    // 【新增】获取所有盘符
-    static std::vector<std::string> GetAllDrives();
+	// 视频扩展名集合 (保持 static const，因为它是常量数据)
+	static const std::set<std::string> VIDEO_EXTENSIONS;
+
+	// 【修改】变为非静态成员函数，通过实例调用
+	void ScanAllDrives(std::function<void(const std::string&)> onFileFound);
+	void ScanDirectory(const std::string& path, int currentDepth, int maxDepth,
+		std::vector<std::string>& results,
+		std::function<void(const std::string&)> onFileFound);
+
+	bool IsVideoFile(const std::string& filePath);
+	std::string GetLowerExtension(const std::string& filePath);
+	std::vector<std::string> GetAllDrives();
+
+	void StopScan();
+	bool IsScanning();
+
+private:
+	// 【单例核心】私有构造函数
+	CVideoScanner();
+	~CVideoScanner();
+
+	// 成员变量，不再需要 static
+	std::atomic<bool> m_isScanning = false;
 };

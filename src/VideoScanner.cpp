@@ -19,11 +19,30 @@ static long long GetFileSize(const std::string& filePath) {
 	return -1; // 错误
 }
 
+
+// 初始化静态常量
 const std::set<std::string> CVideoScanner::VIDEO_EXTENSIONS = {
-    ".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm",
-    ".m4v", ".mpg", ".mpeg", ".3gp", ".3g2", ".rm", ".rmvb",
-    ".ts", ".m2ts", ".mts", ".f4v", ".f4p", ".asf"
+
+	".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm",
+	".m4v", ".mpg", ".mpeg", ".3gp", ".3g2", ".rm", ".rmvb",
+	".ts", ".m2ts", ".mts", ".f4v", ".f4p", ".asf"
 };
+
+// 【单例核心】实现 GetInstance
+// 使用 Magic Static (C++11 起保证线程安全)
+CVideoScanner& CVideoScanner::GetInstance() {
+	static CVideoScanner instance;
+	return instance;
+}
+
+// 私有构造函数
+CVideoScanner::CVideoScanner() {
+	// 初始化逻辑
+}
+
+CVideoScanner::~CVideoScanner() {
+	StopScan(); // 确保退出时停止扫描
+}
 
 std::string CVideoScanner::GetLowerExtension(const std::string& filePath) {
     size_t pos = filePath.find_last_of('.');
@@ -87,11 +106,21 @@ std::vector<std::string> CVideoScanner::GetAllDrives() {
     return drives;
 }
 
+void CVideoScanner::StopScan()
+{
+    m_isScanning.store(false);
+}
+
+bool CVideoScanner::IsScanning()
+{   
+    return m_isScanning.load();
+}
+
 void CVideoScanner::ScanDirectory(const std::string& path, int currentDepth, int maxDepth,
                                  std::vector<std::string>& results,
                                  std::function<void(const std::string&)> onFileFound) {
     if (maxDepth >= 0 && currentDepth > maxDepth) return;
-
+    m_isScanning.store(true);
 #ifdef _WIN32
     std::string searchPath = path + "\\*";
     WIN32_FIND_DATAA findData;
@@ -111,6 +140,7 @@ void CVideoScanner::ScanDirectory(const std::string& path, int currentDepth, int
              // 如果是隐藏目录，通常也是系统目录，跳过
              continue;
         }
+        if (!m_isScanning.load()) break;
 
         std::string fullPath = path + "\\" + fileName;
 
@@ -156,6 +186,7 @@ void CVideoScanner::ScanDirectory(const std::string& path, int currentDepth, int
     }
     closedir(dir);
 #endif
+    m_isScanning.store(false);
 }
 
 // 【新增】全盘扫描入口
@@ -163,10 +194,13 @@ void CVideoScanner::ScanAllDrives(std::function<void(const std::string&)> onFile
     std::vector<std::string> drives = GetAllDrives();
     std::vector<std::string> allVideos;
     std::mutex mtx;
-
+    m_isScanning.store(true);
     std::vector<std::thread> threads;
 
     for (const auto& drive : drives) {
+
+        if (!m_isScanning.load()) break;
+        
         // 为每个磁盘启动一个线程并行扫描
         threads.emplace_back([&, drive]() {
             std::vector<std::string> localResults;
@@ -176,7 +210,7 @@ void CVideoScanner::ScanAllDrives(std::function<void(const std::string&)> onFile
             } catch (...) {
                 std::cerr << "Error scanning drive: " << drive << std::endl;
             }
-
+           
             // 合并结果
             std::lock_guard<std::mutex> lock(mtx);
             allVideos.insert(allVideos.end(), localResults.begin(), localResults.end());
@@ -197,4 +231,5 @@ void CVideoScanner::ScanAllDrives(std::function<void(const std::string&)> onFile
     // 这里为了演示异步回调，我们假设 onFileFound 是实时的
     // 注意：上面的线程内部没有调用 onFileFound，因为多线程并发调用 UI 回调不安全
     // 建议：在主线程中处理 allVideos
+    m_isScanning.store(false);
 }

@@ -188,6 +188,9 @@ public:
 	void Resume();      // 【新增】恢复
 	bool IsPaused() const { return m_bPaused; } // 【新增】获取状态
 
+	//void SetPlaybackRate(double rate); // rate: 0.5, 1.0, 2.0 etc.
+	//double GetPlaybackRate() const { return m_playbackRate; }
+    double GetFps() const; // 【新增】获取视频帧率
 private:
     // 线程函数
     void ReadLoop();
@@ -277,6 +280,11 @@ private:
     // 其他
     CAudioPlayer* m_pAudioPlayer = nullptr;
     FILE* m_debugFile = nullptr;
+
+	//double m_playbackRate = 1.0;
+	//std::mutex m_rateMutex;
+
+    double m_fps = 30.0;   // 【新增】缓存帧率，默认30
 };
 
 #endif // __FFMPEG_H__

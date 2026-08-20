@@ -51,8 +51,10 @@ public:
 	void Resume();
 
 	void SetVolume(float vol); // vol 范围 0.0 - 1.0
-	float GetVolume() const { return m_volume; }
+	//float GetVolume() const { return CConfigManager::GetInstance().GetVolume()/100.0f; }
     void OnAudioData(uint8_t* data, int size);
+
+    void SetPlaybackRate(float rate); // 1.0 正常, 2.0 快放, 0.5 慢放
 private:
     SDL_AudioDeviceID m_audioDevID = 0;
     SDL_AudioStream* m_pAudioStream = nullptr;
@@ -74,7 +76,12 @@ private:
     // 【可选】如果需要更严格的线程安全，可以添加一个互斥锁保护 m_spec 等状态
     // std::mutex m_mutex;
 
-    float m_volume = 1.0f; // 默认最大音量
+  
+
+	//soundtouch::SoundTouch m_soundTouch; // SoundTouch 实例
+	//std::vector<short> m_inputBuffer;    // 输入缓冲
+	//std::vector<short> m_outputBuffer;   // 输出缓冲
+
 };
 
 #endif // _AUDIOPLAYER_H

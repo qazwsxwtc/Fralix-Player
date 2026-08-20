@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window size="10,100" caption="0,0,0,0" bkcolor="#00000000">
+    <!-- 背景容器：带圆角和半透明背景 -->
+    <VerticalLayout bkcolor="#FF2D2D2D" bordersize="0" bordercolor="#FF444444" > 
+        <!-- 中间：垂直滑动条 -->
+        <VerticalLayout >
+            <!-- 使用 vertical="true" 实现垂直滑动 -->
+            <Slider name="slider_vol_popup" 
+                    width="10" 
+                    height="100"
+                    min="0" max="200" value="100" hor="false" tooltip="调节音量" thumbsize="10,10"
+bkimage="file='bgv.bmp' corner='0,0,0,0' mask='#FFFF00FF'"
+foreimage="file='fgv.bmp' corner='0,0,0,0' mask='#FFFF00FF'"
+thumbimage="file='thumbv.bmp' source='0,0,10,10' mask='#FFDAEBF9' corner='0,0,0,0'"
+thumbhotimage="file='thumbv.bmp' source='0,10,10,20' mask='#FFDAEBF9' corner='0,0,0,0'"
+thumbpushedimage="file='thumbv.bmp' source='0,20,10,30' corner='0,0,0,0'"  />
+        </VerticalLayout>
+
+    </VerticalLayout>
+</Window>

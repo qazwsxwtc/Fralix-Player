@@ -23,6 +23,12 @@ public:
     // 将视频帧数据绘制到窗口上
     void RenderFrame(const uint8_t* pData, int width, int height, VideoPixelFormat format);
 
+	// 【新增】渲染并缓存帧
+	void RenderFrameAndCache(uint8_t* pData, int w, int h, VideoPixelFormat fmt);
+
+	// 【新增】重绘缓存的最后一帧
+	void RenderCachedFrame();
+
 	HDC     GetMemDC();         // 内存 DC
 	HBITMAP    GetBitmap();
 	int         GetWidth();
@@ -68,4 +74,9 @@ private:
 	bool        m_bVideoVisible;
 	int         m_nWidth;         // 当前窗口/控件宽度
 	int         m_nHeight;        // 当前窗口/控件高度
+
+	uint8_t* m_pCachedData = nullptr; // 缓存的像素数据
+	int m_nCachedWidth = 0;
+	int m_nCachedHeight = 0;
+    VideoPixelFormat m_cachedFmt = PIXEL_FORMAT_RGB24;
 };

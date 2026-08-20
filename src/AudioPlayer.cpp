@@ -1,5 +1,6 @@
 #include "AudioPlayer.h"
 #include <iostream>
+#include "ConfigManager.h"
 
 CAudioPlayer::CAudioPlayer()
 {
@@ -60,6 +61,13 @@ bool CAudioPlayer::Init(int sampleRate, int channels) {
     m_lastQueryTicks = SDL_GetPerformanceCounter();
     
     m_isInitialized.store(true);
+
+
+	// 配置 SoundTouch
+	//m_soundTouch.setSampleRate(sampleRate);
+	//m_soundTouch.setChannels(channels);
+	//m_soundTouch.setTempoChange(0.0); // 初始不变速
+
     return true;
 }
 
@@ -114,6 +122,37 @@ void CAudioPlayer::FeedData(const uint8_t* data, int size) {
     // 【关键】只记录总发送量，不计算时间
     m_totalBytesSent.fetch_add(size);
 }
+
+//备用，用了SoundTouch后使用
+//void CAudioPlayer::FeedData(const uint8_t* data, int size) {
+//	if (!m_isInitialized.load() || !data || size <= 0) return;
+//
+//	// 1. 将原始 PCM 数据放入 SoundTouch
+//	// 假设数据是 S16LE (short)
+//	const short* samples = reinterpret_cast<const short*>(data);
+//	int numSamples = size / sizeof(short);
+//
+//	m_soundTouch.putSamples(samples, numSamples / m_soundTouch.getChannels());
+//
+//	// 2. 从 SoundTouch 接收处理后的数据
+//	// 注意：SoundTouch 内部有缓冲，可能不会立即返回所有数据
+//	std::vector<short> receivedSamples;
+//	int recvSamples = 0;
+//
+//	// 循环读取直到缓冲区为空
+//	do {
+//		receivedSamples.resize(4096); // 临时缓冲
+//		recvSamples = m_soundTouch.receiveSamples(receivedSamples.data(), receivedSamples.size() / m_soundTouch.getChannels());
+//
+//		if (recvSamples > 0) {
+//			int bytesToWrite = recvSamples * m_soundTouch.getChannels() * sizeof(short);
+//
+//			// 3. 将处理后的数据推入 SDL Stream
+//			SDL_PutAudioStreamData(m_pAudioStream, receivedSamples.data(), bytesToWrite);
+//			m_totalBytesSent.fetch_add(bytesToWrite);
+//		}
+//	} while (recvSamples > 0);
+//}
 
 double CAudioPlayer::GetPlayedSeconds() const {
 	if (!m_isInitialized.load() || !m_pAudioStream) return 0.0;
@@ -246,7 +285,7 @@ void CAudioPlayer::Flush() {
 
 void CAudioPlayer::Restart() {
     if (!m_isInitialized.load()) return;
-	/*std::lock_guard<std::mutex> lock(m_mutex);*/
+
     // 1. 保存当前的配置参数
     int freq = m_spec.freq;
     int channels = m_spec.channels;
@@ -298,12 +337,12 @@ double CAudioPlayer::GetCurrentLatencySeconds() const {
 void CAudioPlayer::SetVolume(float vol) {
     if (vol < 0.0f) vol = 0.0f;
     if (vol > 2.0f) vol = 2.0f;
-    m_volume = vol;
+    
 
 	// 【关键】如果流已创建，直接设置流的增益
 	// SDL_SetAudioStreamGain 是线程安全的，且由 SDL 内部优化处理
 	if (m_pAudioStream) {
-		SDL_SetAudioStreamGain(m_pAudioStream, m_volume);
+		SDL_SetAudioStreamGain(m_pAudioStream, vol);
 	}
 }
 
@@ -311,25 +350,47 @@ void CAudioPlayer::SetVolume(float vol) {
 // 假设 data 是待播放的 PCM 数据 (例如 S16LE 格式)
 // nb_samples 是样本数
 void CAudioPlayer::OnAudioData(uint8_t* data, int size) {
-    if (m_volume == 1.0f) return; // 无需处理
+    //if (m_volume == 1.0f) return; // 无需处理
 
-    // 假设是 16-bit signed integer (S16)
-    int16_t* samples = (int16_t*)data;
-    int numSamples = size / 2; // 2 bytes per sample for S16
+    //// 假设是 16-bit signed integer (S16)
+    //int16_t* samples = (int16_t*)data;
+    //int numSamples = size / 2; // 2 bytes per sample for S16
 
-    for (int i = 0; i < numSamples; ++i) {
-        // 应用音量增益
-        float sampleFloat = static_cast<float>(samples[i]);
-        sampleFloat *= m_volume;
-        
-        // 防止溢出 (Clipping)
-        if (sampleFloat > 32767.0f) sampleFloat = 32767.0f;
-        if (sampleFloat < -32768.0f) sampleFloat = -32768.0f;
-        
-        samples[i] = static_cast<int16_t>(sampleFloat);
-    }
+    //for (int i = 0; i < numSamples; ++i) {
+    //    // 应用音量增益
+    //    float sampleFloat = static_cast<float>(samples[i]);
+    //    sampleFloat *= m_volume;
+    //    
+    //    // 防止溢出 (Clipping)
+    //    if (sampleFloat > 32767.0f) sampleFloat = 32767.0f;
+    //    if (sampleFloat < -32768.0f) sampleFloat = -32768.0f;
+    //    
+    //    samples[i] = static_cast<int16_t>(sampleFloat);
+    //}
     
     // 如果是 float 格式或其他格式，逻辑类似，只是数据类型不同
 }
 
 
+void CAudioPlayer::SetPlaybackRate(float rate) {
+    if (rate <= 0.0f) rate = 0.1f;
+    if (rate > 8.0f) rate = 8.0f;
+    
+	CConfigManager::GetInstance().SetPlaybackRate(rate);
+
+    // 【关键】SDL3 API: 设置音频流的频率比例
+    // 如果 rate > 1.0，播放速度加快，音调变高
+    // 如果 rate < 1.0，播放速度减慢，音调变低
+    if (m_pAudioStream) {
+        SDL_SetAudioStreamFrequencyRatio(m_pAudioStream, CConfigManager::GetInstance().GetPlaybackRate());
+    }
+
+	//// SoundTouch 的 setTempo 接受的是倍数 (1.0 = 正常, 2.0 = 双倍速)
+	//m_soundTouch.setTempo(rate);
+
+	//// 如果 SDL 流已存在，也可以同时设置 SDL 的频率比作为双重保险，
+	//// 但通常我们只让 SoundTouch 处理变速，SDL 保持 1.0 比率
+	//if (m_pAudioStream) {
+	//	SDL_SetAudioStreamFrequencyRatio(m_pAudioStream, 1.0f);
+	//}
+}

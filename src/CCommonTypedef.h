@@ -36,6 +36,7 @@
 #define WM_USER_SEEK_COMPLETE (WM_USER + 1003)
 #define WM_USER_SCAN_COMPLETE (WM_USER + 1004)
 #define WM_ADDLISTITEM (WM_USER + 1005)
+#define WM_VOLUME_CHANGED (WM_USER + 1006)
 
 // 在 CFFmpegDecoder.cpp 顶部或 .h文件中
 const int MAX_VIDEO_PACKET_QUEUE_SIZE = 100;

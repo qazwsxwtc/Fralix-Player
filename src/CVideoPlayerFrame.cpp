@@ -7,6 +7,7 @@
 #include <commctrl.h>
 #include "WndMediaDisplay.h"
 #include "include\DuiLib\Core\UIDlgBuilder.h" // 确保包含此头文件
+#include "ConfigManager.h"
 
 
 // 自定义控件创建回调
@@ -25,19 +26,6 @@ public:
 };
 
 CVideoPlayerFrame::CVideoPlayerFrame()
-    : m_bIsPlaying(false)
-    , m_bIsFullScreen(false)
-    , m_nTotalDuration(0)
-    , m_pVideoContainer(nullptr)
-    , m_pLblFilename(nullptr)
-    , m_pLblCurrTime(nullptr)
-    , m_pLblTotalTime(nullptr)
-    , m_pSliderProgress(nullptr)
-    , m_pSliderVolume(nullptr)
-    , m_pBtnPlayPause(nullptr)
-    , m_pBtnStop(nullptr)
-    , m_pBtnOpen(nullptr)
-    , m_pBtnFullScreen(nullptr)
 {
 
 }
@@ -144,6 +132,33 @@ LRESULT CVideoPlayerFrame::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam
 			}
 			return 0;
 		}
+		// 【新增】快进/快退快捷键
+		else if (wParam == VK_RIGHT)
+		{
+			FastForward(10); // 快进10秒
+			return 0;
+		}
+		else if (wParam == VK_LEFT)
+		{
+			FastRewind(10); // 快退10秒
+			return 0;
+		}
+		// 【新增】倍速控制
+		else if (wParam == VK_UP)
+		{
+			double newRate = CConfigManager::GetInstance().GetPlaybackRate() + 0.25;
+			if (newRate > 8.0) newRate = 8.0;
+			SetPlaybackRate(newRate);
+			CConfigManager::GetInstance().SetPlaybackRate(newRate);
+		}
+		else if (wParam == VK_DOWN)
+		{
+			double newRate = CConfigManager::GetInstance().GetPlaybackRate() - 0.25;
+			if (newRate < 0.25) newRate = 0.25;
+			SetPlaybackRate(newRate);
+			CConfigManager::GetInstance().SetPlaybackRate(newRate);
+		}
+		break;
 		break;
 	case WM_MOUSEMOVE:
 	{
@@ -216,16 +231,61 @@ LRESULT CVideoPlayerFrame::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam
 		int w = lParamVal & 0xFFFF;
 		int h = (lParamVal >> 16) & 0xFFFF;
          
-		if (pData && m_pMediaDisplay) {
-			// 调用渲染窗口的绘制函数
-			// 假设 CVideoRenderWnd 有一个 RenderFrame 方法接受 RGB24 数据
-            RECT rc = m_pMediaDisplay->GetPos();
-            m_pMediaDisplay->RenderFrame(pData, w, h, PIXEL_FORMAT_RGB24);
+		if (pData && m_pMediaDisplay)
+		{
+			// 【关键】倍速控制逻辑
+			bool shouldRenderNewFrame = true;
+			ULONGLONG currentTime = GetTickCount64(); // 获取当前系统时间(ms)
 
-			// 释放拷贝的数据
-			delete[] pData;
+			// 只有当倍速不为 1.0 且已经有过渲染记录时才进行控制
+			if (m_lastRenderTime != 0 && CConfigManager::GetInstance().GetPlaybackRate() != 1.0 && m_frameDurationMs > 0)
+			{
+				double elapsed = static_cast<double>(currentTime - m_lastRenderTime);
+
+				// 目标间隔内，不应该渲染新帧
+				if (elapsed < m_frameDurationMs)
+				{
+					shouldRenderNewFrame = false;
+
+					// 【优化慢放】：如果处于慢放状态，虽然不渲染新帧，
+					// 但我们应该重绘上一帧，以防止画面被其他窗口遮挡后变黑或闪烁
+					if (CConfigManager::GetInstance().GetPlaybackRate() < 1.0) {
+						m_pMediaDisplay->RenderCachedFrame();
+					}
+				}
+			}
+
+			if (shouldRenderNewFrame)
+			{
+				// 1. 渲染新帧并缓存
+				m_pMediaDisplay->RenderFrameAndCache(pData, w, h, PIXEL_FORMAT_RGB24);
+
+				// 2. 更新最后渲染时间
+				m_lastRenderTime = currentTime;
+
+				// 注意：RenderFrameAndCache 内部已经拷贝了数据，
+				// 所以这里的 pData 可以安全释放
+				delete[] pData;
+			}
+			else
+			{
+				// 如果决定不渲染，必须释放传入的数据，防止内存泄漏
+				delete[] pData;
+
+				// 如果是慢放且需要重复显示，这里应该触发重绘旧缓冲区
+				// 但为了简化，我们仅做丢帧处理。
+				// 若要完美慢放，需要在 m_pMediaDisplay 中缓存最后一帧纹理
+			}
+		}
+		else if (pData) {
+			delete[] pData; // 安全释放
 		}
 		lRes = 0;
+		break;
+	}
+	case WM_VOLUME_CHANGED:
+	{
+        SetVolume(wParam);
 		break;
 	}
 	case WM_USER_PLAY_END:
@@ -383,15 +443,25 @@ LRESULT CVideoPlayerFrame::OnTimer(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     if (wParam == TIMER_ID_UPDATE_PROGRESS)
     {
-        if (m_pFFmpegEngine)
+        if (m_pFFmpegEngine && m_bIsPlaying && !m_bIsPaused)
         {
-          
-			double currentSec = m_audioPlayer.GetPlayedSeconds()*1000 + m_nSeekDuration;
+			// 【关键】获取当前音频播放时间，并乘以倍速？
+			  // 不，音频播放时间是物理时间。
+			  // 如果视频是 2x，音频也是 2x（理想情况下），那么物理时间流逝 1秒，播放进度增加 2秒。
+			double currentSec = m_audioPlayer.GetPlayedSeconds() 
+				* 1000 * CConfigManager::GetInstance().GetPlaybackRate() + m_nSeekDuration;
+			
+			// 注意：如果音频没有真正变速，这里计算出的进度会是错误的。
+			// 正确的做法是：如果音频没变速，进度条不应该按倍速跳，而是视频画面跳。
+			// 但由于我们很难在纯 SDL/FFmpeg 中完美实现音频变速不变调，
+			// 这里暂且假设用户能接受音频变调或不同步，或者仅用于视频预览。
 			double totalSec = m_pFFmpegEngine->GetDuration();
             // 模拟进度增加 (仅用于演示，实际请替换为引擎数据)
             // m_nCurrentPos += 500; 
             // if (m_nCurrentPos > m_nTotalDuration) m_nCurrentPos = m_nTotalDuration;
- 
+			m_nCurrentPlayMs = static_cast<int>(currentSec);
+{ 
+}	
             // 更新 UI
             if (m_pSliderProgress && m_nTotalDuration > 0)
             { 
@@ -480,27 +550,12 @@ void CVideoPlayerFrame::InitRun()
 
 	// 【新增】查找音量控件
 	m_pBtnVolume = static_cast<CButtonUI*>(m_PaintManager.FindControl(_T("btn_volume")));
-	m_pSliderVolume = static_cast<CSliderUI*>(m_PaintManager.FindControl(_T("slider_volume")));
-	m_pVolumePanel = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(_T("volume_panel")));
+	/*m_pSliderVolume = static_cast<CSliderUI*>(m_PaintManager.FindControl(_T("slider_volume")));*/
+	/*m_pVolumePanel = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(_T("volume_panel")));*/
 	
 	// 初始化音量
-	m_nCurrentVolume = 50;
-	if (m_pSliderVolume) {
-		// 【关键修复】手动强制设置为垂直模式
-		m_pSliderVolume->SetAttribute(_T("hor"), _T("false"));
-
-		m_pSliderVolume->SetFixedWidth(10);
-		m_pSliderVolume->SetFixedHeight(100);
-		// 确保滑块大小适合垂直显示
-		m_pSliderVolume->SetThumbSize(SIZE{ 10, 10 });
-
-		// 设置初始值
-		m_pSliderVolume->SetValue(100);
-
-		// 强制刷新该控件的布局
-		m_pSliderVolume->NeedUpdate();
-	}
-
+	CConfigManager::GetInstance().SetVolume(100);
+	
 	// 初始化播放列表
 	m_pPlaylistList = static_cast<CListUI*>(m_PaintManager.FindControl(_T("playlist_list")));
 	m_pPlaylistPanel = static_cast<CVerticalLayoutUI*>(m_PaintManager.FindControl(_T("playlist_panel")));
@@ -634,7 +689,16 @@ void CVideoPlayerFrame::Notify(TNotifyUI& msg)
 		}
 		else if (msg.pSender == m_pBtnVolume)
 		{
-			ToggleVolumePanel();
+			//ToggleVolumePanel();
+			ShowVolumePopup();
+		}
+		else if (msg.pSender->GetName() == _T("btn_forward"))
+		{
+			FastForward(10);
+		}
+		else if (msg.pSender->GetName() == _T("btn_rewind"))
+		{
+			FastRewind(10);
 		}
     }
     else if (msg.sType == _T("valuechanged"))
@@ -653,11 +717,11 @@ void CVideoPlayerFrame::Notify(TNotifyUI& msg)
 			// 如果用户在 200ms 内继续拖动，这个定时器会被再次杀死并重启
 			SetTimer(m_hWnd, TIMER_ID_SEEK_DEBOUNCE, 200, NULL);
         }
-        else if (msg.pSender == m_pSliderVolume)
+       /* else if (msg.pSender == m_pSliderVolume)
         {
             int nVol = m_pSliderVolume->GetValue();
             SetVolume(nVol);
-        }
+        }*/
     }
 	else if (_tcsicmp(msg.sType, _T("itemclick")) == 0)
 	{
@@ -749,6 +813,9 @@ void CVideoPlayerFrame::Stop()
 		m_pFFmpegEngine = nullptr;
 	}
     ShowDropHint(true);
+	m_lastRenderTime = 0;
+	//m_playbackRate = 1.0;
+	m_frameDurationMs = 33.33;
 }
 
 void CVideoPlayerFrame::Seek(int nPos)
@@ -783,14 +850,14 @@ void CVideoPlayerFrame::SetVolume(int nVol)
 	if (nVol < 0) nVol = 0;
 	if (nVol > 200) nVol = 200;
 
-	m_nCurrentVolume = nVol;
+	
 
 	// 映射到 0.0 - 1.0
 	float volumeFloat = static_cast<float>(nVol) / 100.0f;
 
 	// 调用 SDL3 封装层的设置
 	m_audioPlayer.SetVolume(volumeFloat);
-
+	CConfigManager::GetInstance().SetVolume(nVol);
 	// 更新按钮图标（可选）
 	if (m_pBtnVolume) {
 		if (nVol == 0) {
@@ -1141,13 +1208,17 @@ void CVideoPlayerFrame::SetWindowSize(int nWidth, int nHeight)
 
 void CVideoPlayerFrame::OnClose(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	CVideoScanner::GetInstance().StopScan();
     if(m_pFFmpegEngine)m_pFFmpegEngine->Close();
 	// 2. 停止 SDL 音频
 	//if (m_audioPlayer.IsInitialized()) { // 假设你有这个判断方法
 	m_audioPlayer.Stop();
 	//}
 
-	
+	if (m_pVolumepWnd)
+	{
+		delete m_pVolumepWnd;
+	}
 
     OnPlayEnd();
 	// 3. 关闭窗口
@@ -1312,17 +1383,21 @@ void CVideoPlayerFrame::OnScanAllLibrary()
 {
 	// 启动后台线程
 	std::thread([this]() {
-		std::vector<std::string> drives = CVideoScanner::GetAllDrives();
+		std::vector<std::string> drives = CVideoScanner::GetInstance().GetAllDrives();
 		std::vector<std::string> allVideos;
 		std::mutex mtx;
 
 		std::vector<std::thread> threads;
 		for (const auto& drive : drives) {
+			if (!m_bIsPlaying)
+			{
+				break;
+			}
 			threads.emplace_back([&, drive]() {
 				std::vector<std::string> local;
 				// 扫描该磁盘，深度限制为 5 层以加快速度，或者 -1 全盘
-				CVideoScanner::ScanDirectory(drive, 0, -1, local, nullptr);
-
+				CVideoScanner::GetInstance().ScanDirectory(drive, 0, -1, local, nullptr);
+				
 				std::lock_guard<std::mutex> lock(mtx);
 				allVideos.insert(allVideos.end(), local.begin(), local.end());
 			});
@@ -1335,6 +1410,10 @@ void CVideoPlayerFrame::OnScanAllLibrary()
 
 		for (auto& path : allVideos)
 		{
+			if (!m_bIsPlaying)
+			{
+				break;
+			}
 			auto * pData = new std::string(std::move(path));
 			::PostMessage(m_hWnd, WM_ADDLISTITEM, 0, (LPARAM)pData);
 		}
@@ -1346,38 +1425,142 @@ void CVideoPlayerFrame::OnScanAllLibrary()
 	}).detach();
 }
 
-void CVideoPlayerFrame::ToggleVolumePanel()
+void CVideoPlayerFrame::FastForward(int seconds)
 {
-    if (!m_pVolumePanel || !m_pBtnVolume) return;
+    if (!m_pFFmpegEngine || m_nTotalDuration <= 0) return;
 
-    bool isVisible = m_pVolumePanel->IsVisible();
+    // 1. 获取当前播放进度（毫秒）
+    // 注意：这里使用 m_audioPlayer.GetPlayedSeconds() 可能不够实时，
+    // 更好的方式是维护一个 m_nCurrentPosMs 变量，在 OnTimer 中更新它。
+    // 为了简化，我们暂时基于滑块的值或者估算值。
     
-    // 切换可见性
-    m_pVolumePanel->SetVisible(!isVisible);
-
-    // 如果即将显示，则动态调整位置到按钮附近
-    if (!isVisible) {
-        // 1. 获取音量按钮相对于窗口客户区的位置
-        RECT rcBtn = m_pBtnVolume->GetPos();
-        
-        // 2. 计算面板位置 (默认在按钮上方)
-        int panelWidth = 10;  // 与 XML 中 slider 宽度一致或稍宽
-        int panelHeight = 100; // 与 XML 中 slider 高度一致
-        int spacing = 0;       // 间距
-
-        int panelX = rcBtn.left + (rcBtn.right - rcBtn.left - panelWidth) / 2; // 水平居中对齐按钮
-        int panelY = rcBtn.top - panelHeight - spacing;
-
-        // 3. 边界检查：如果上方空间不足，则显示在按钮下方
-        if (panelY < 0) {
-            panelY = rcBtn.bottom + spacing;
-        }
-
-        // 4. 设置面板的新位置和大小
-        // 注意：SetPos 会立即更新控件的矩形区域
-        m_pVolumePanel->SetPos(RECT{ panelX, panelY, panelX + panelWidth, panelY + panelHeight });
-        
-        // 5. 强制刷新布局，确保子控件（Slider）正确重绘
-        m_pVolumePanel->NeedUpdate();
+    // 更准确的方式：从 Slider 获取当前百分比，或者使用之前计算的 currentSec
+    double currentSec = m_audioPlayer.GetPlayedSeconds() * 1000 + m_nSeekDuration;
+    
+    // 2. 计算目标时间
+    double targetSec = currentSec + (seconds * 1000);//这个是音频缓存的位置
+	targetSec = m_nCurrentPlayMs + (seconds * 1000);//这个是当前进度条的位置，可能更准确
+    // 3. 限制范围 [0, TotalDuration]
+    if (targetSec > m_nTotalDuration) {
+        targetSec = m_nTotalDuration;
     }
+    if (targetSec < 0) {
+        targetSec = 0;
+    }
+
+    // 4. 转换为 Slider 的 0-1000 范围
+    int nPos = static_cast<int>((targetSec / m_nTotalDuration) * 1000);
+    if (nPos > 1000) nPos = 1000;
+    if (nPos < 0) nPos = 0;
+
+    // 5. 触发 Seek
+    // 复用现有的防抖逻辑或直接调用 SeekAsync
+    m_nPendingSeekPos = nPos;
+    
+    // 杀死旧的防抖定时器，立即触发一个新的短定时器，或者直接调用
+    KillTimer(m_hWnd, TIMER_ID_SEEK_DEBOUNCE);
+    SetTimer(m_hWnd, TIMER_ID_SEEK_DEBOUNCE, 50, NULL); // 50ms 后执行，比拖动更快
+}
+
+void CVideoPlayerFrame::FastRewind(int seconds)
+{
+    // 逻辑同快进，只是减去时间
+    if (!m_pFFmpegEngine || m_nTotalDuration <= 0) return;
+
+    double currentSec = m_audioPlayer.GetPlayedSeconds() * 1000 + m_nSeekDuration;
+    double targetSec = currentSec - (seconds * 1000);
+
+    if (targetSec > m_nTotalDuration) targetSec = m_nTotalDuration;
+    if (targetSec < 0) targetSec = 0;
+
+    int nPos = static_cast<int>((targetSec / m_nTotalDuration) * 1000);
+    if (nPos > 1000) nPos = 1000;
+    if (nPos < 0) nPos = 0;
+
+    m_nPendingSeekPos = nPos;
+    KillTimer(m_hWnd, TIMER_ID_SEEK_DEBOUNCE);
+    SetTimer(m_hWnd, TIMER_ID_SEEK_DEBOUNCE, 50, NULL);
+}
+
+void CVideoPlayerFrame::SetPlaybackRate(double rate)
+{
+    if (!m_pFFmpegEngine) return;
+
+	m_lastRenderTime = 0;
+   
+
+	//if (rate < 1.0) {
+	//	// 慢放时暂时静音，避免音画严重不同步带来的不适感
+	//	m_audioPlayer.SetVolume(0.0f);
+	//}
+	//else {
+	//	// 恢复正常音量
+	//	m_audioPlayer.SetVolume(static_cast<float>(m_nCurrentVolume) / 100.0f);
+	//}
+	// 
+	// 2. 设置音频播放速率
+	m_audioPlayer.SetPlaybackRate(static_cast<float>(rate));//会变调
+
+	//soundtouch方案 快放和慢放
+
+	// 获取视频帧率 (FPS)
+	double fps = m_pFFmpegEngine->GetFps();
+	if (fps > 0) {
+		// 目标帧间隔 = (1000ms / FPS) / Rate
+		// 例如: 30fps, 2x speed -> 间隔 = (33.3 / 2) = 16.6ms
+		m_frameDurationMs = (1000.0 / fps) / rate;
+	}
+	else {
+		m_frameDurationMs = 33.33 / rate; // 默认30fps
+	}
+
+	// 重置渲染计时器，防止第一帧判断错误
+	m_lastRenderTime = 0;
+	// 可选：清除缓存，避免显示旧视频的最后一帧
+	if (m_pMediaDisplay) {
+		// 可以在 CWndMediaDisplay 中添加 ClearCache()
+	}
+    // 【关键】调整进度条更新定时器的间隔
+    // 如果 2x 速度，定时器触发频率应该加倍，或者在 OnTimer 中乘以 rate
+    // 这里我们选择在 OnTimer 中处理逻辑，保持定时器间隔不变
+    
+    OutputDebugString(L"Playback rate changed to: ");
+    OutputDebugString(std::to_wstring(rate).c_str());
+    OutputDebugString(L"\n");
+}
+
+void CVideoPlayerFrame::ShowVolumePopup()
+{
+	if (!m_pVolumepWnd) {
+		m_pVolumepWnd = new CVolumePopupWnd();
+	}
+
+	RECT rcBtn = m_pBtnVolume->GetPos();
+	// 转换为屏幕坐标
+	/*POINT pt = { rcBtn.left, rcBtn.top };
+	ClientToScreen(m_hWnd, &pt);
+	RECT rcScreenBtn = { pt.x, pt.y, pt.x + (rcBtn.right - rcBtn.left), pt.y + (rcBtn.bottom - rcBtn.top) };*/
+
+	// 如果窗口已可见，则隐藏；否则显示
+	if (IsWindowVisible(m_pVolumepWnd->GetHWND())) {
+		m_pVolumepWnd->HideVolume();
+	}
+	else {
+		m_pVolumepWnd->ShowVolume(m_hWnd, rcBtn, CConfigManager::GetInstance().GetVolume());
+	}
+
+	// 获取按钮位置
+	//RECT rcBtn = m_pBtnVolume->GetPos();
+	//// 转换为屏幕坐标
+	//POINT pt = { rcBtn.left, rcBtn.top };
+	//ClientToScreen(m_hWnd, &pt);
+	//RECT rcScreenBtn = { pt.x, pt.y, pt.x + (rcBtn.right - rcBtn.left), pt.y + (rcBtn.bottom - rcBtn.top) };
+
+	// 创建并显示弹窗
+	/*m_pVolumepWnd = new CVolumePopupWnd();
+	m_pVolumepWnd->ShowAtPoint(m_hWnd, rcScreenBtn, CConfigManager::GetInstance().GetVolume());*/
+
+	// 注意：由于弹窗是异步的，你需要一种机制将值传回主窗口
+	// 简单做法：在弹窗关闭前，主窗口通过定时器或消息获取值
+	// 或者修改 CVolumePopupWnd 接受一个回调函数
 }

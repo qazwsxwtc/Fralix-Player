@@ -508,8 +508,8 @@ void CFFmpegDecoder::VideoShowLoop()
 
 void CFFmpegDecoder::VideoDecodeLoop()
 {
-    AVFrame* frame = av_frame_alloc();
-    AVPacket* packet = nullptr;
+   
+    //AVPacket* packet = nullptr;
 
     while (!m_bStopThreads) {
 		
@@ -525,6 +525,7 @@ void CFFmpegDecoder::VideoDecodeLoop()
         avcodec_send_packet(m_pVideoCodecCtx, packet);
         av_packet_free(&packet);
 
+        AVFrame* frame = av_frame_alloc();
         while (avcodec_receive_frame(m_pVideoCodecCtx, frame) == 0) {
 			// 【关键修复】Seek 后花屏与崩溃防护
 			if (m_bSeeking.load()) {
@@ -562,8 +563,9 @@ void CFFmpegDecoder::VideoDecodeLoop()
 
 			av_frame_unref(frame);
 		}
+        av_frame_free(&frame);
 	}
-	av_frame_free(&frame);
+	
 	m_bSeeking.store(false); // 线程退出时重置
 }
 
@@ -758,4 +760,9 @@ void CFFmpegDecoder::ResetPauseState()
 	if (wasPaused) {
 		m_pauseCondVar.notify_all();
 	}
+}
+
+
+double CFFmpegDecoder::GetFps() const {
+	return m_fps;
 }
