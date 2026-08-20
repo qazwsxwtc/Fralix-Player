@@ -18,6 +18,10 @@
 ### 视频播放
 ![Fralix‑Player 视频播放](./assets/playvideo.png)
 
+### 加入项目
+- 如果你有兴趣，可以联系qazwsxwtc@aliyun.com, 进行开发提交源码
+
+
 ## 🚀 快速构建
 - download ffmpeg
 	https://github.com/FFmpeg/FFmpeg/releases/tag/n8.1.2

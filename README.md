@@ -16,6 +16,8 @@ Self‑developed Windows media player, based on Duilib + FFmpeg + SDL3
 ### play video
 ![Fralix‑Player play video](./assets/playvideo.png)
 
+### Join the Project
+- If you are interested in contributing, feel free to contact "qazwsxwtc@aliyun.com" to submit your source‑code contributions.
 
 ### Quick Start
 - download ffmpeg 
