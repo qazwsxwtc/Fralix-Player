@@ -10,6 +10,13 @@
 - Duilib UI界面
 - 支持常见媒体格式
 
+## 介绍
+# 运行目录结构
+![Fralix‑Player 运行目录](./assets/runpath.png)
+
+# 视频播放
+![Fralix‑Player 视频播放](./assets/playvideo.png)
+
 ## 🚀 快速构建
 - download ffmpeg
 	https://github.com/FFmpeg/FFmpeg/releases/tag/n8.1.2
@@ -32,7 +39,7 @@
 ```bash
 
 git clone https://github.com/qazwsxwtc/Fralix‑Player.git
-cd Fralix‑Player
+cd Fralix‑Player/src
 
 make build
 cd build

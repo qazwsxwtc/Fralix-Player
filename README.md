@@ -8,6 +8,14 @@ Self‑developed Windows media player, based on Duilib + FFmpeg + SDL3
 - SDL3 audio output  V3.4.14
 - Duilib UI
 
+## Introduce
+# Runtime Directory Structure
+![Fralix‑Player Runtime Directory Structure](./assets/runpath.png)
+
+# play video
+![Fralix‑Player play video](./assets/playvideo.png)
+
+
 ## Quick Start
 - download ffmpeg 
 	https://github.com/FFmpeg/FFmpeg/releases/tag/n8.1.2
@@ -28,7 +36,7 @@ Self‑developed Windows media player, based on Duilib + FFmpeg + SDL3
 
 ```bash
 git clone https://github.com/qazwsxwtc/Fralix‑Player.git
-cd Fralix‑Player
+cd Fralix‑Player/src
 
 make build
 cd build
