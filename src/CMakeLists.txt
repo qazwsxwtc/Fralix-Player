@@ -119,8 +119,8 @@ file(GLOB_RECURSE SOURCES
 # 排除不需要的文件（如果有）
 # list(REMOVE_ITEM SOURCES ...)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
-
+#add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable(${PROJECT_NAME} WIN32 avrunmain.cpp ${SOURCES})
 # 设置字符集为 Unicode
 target_compile_definitions(${PROJECT_NAME} PRIVATE _UNICODE UNICODE)
 # 在 add_executable 之后，target_link_libraries 之前或之后

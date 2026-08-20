@@ -132,10 +132,16 @@ LRESULT CVideoPlayerFrame::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam
 	case WM_KEYDOWN:
 		if (wParam == VK_SPACE)
 		{
-			if (m_bIsPlaying)
+			if (!m_bIsPaused)
+			{
 				Pause();
+				m_bIsPaused = true;
+			}
 			else
+			{
 				Play();
+				m_bIsPaused = false;
+			}
 			return 0;
 		}
 		break;

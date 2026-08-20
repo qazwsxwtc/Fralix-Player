@@ -104,14 +104,14 @@ private:
     CVerticalLayoutUI* m_pVolumePanel = nullptr;
    CWndMediaDisplay* m_pMediaDisplay = nullptr;
     // === 播放状态 ===
-    bool m_bIsPlaying;
+    bool m_bIsPlaying = false;
     bool m_bIsPaused = false;
-    bool m_bIsFullScreen;
+    bool m_bIsFullScreen = false;
     int m_nTotalDuration = 0; // 毫秒
     //int m_nCurrentPos;    // 毫秒
     int m_nSeekDuration = 0;
     
-    CLabelUI* m_pLblDropHint; // 【新增】拖放提示标签
+    CLabelUI* m_pLblDropHint = nullptr; // 【新增】拖放提示标签
     
     // 假设你有一个底层的播放器引擎类 (如 VLC, FFmpeg wrapper)
     // 这里用 void* 占位，实际开发中替换为你的播放器实例指针
@@ -131,16 +131,16 @@ private:
 	bool m_bIsSeeking = false; // 【新增】标记是否正在 Seek
 
 
-	CVerticalLayoutUI* m_pBottomCtr; // 底部控制栏指针
-	bool m_bShowControlBar;          // 是否显示控制栏
+	CVerticalLayoutUI* m_pBottomCtr = nullptr; // 底部控制栏指针
+	bool m_bShowControlBar = true;          // 是否显示控制栏
    
     std::vector<std::wstring> m_playlistPaths;
     int  m_nCurrentPlayIndex = -1;
 	
 	// ... 其他成员 ...
-	CButtonUI* m_pBtnVolume;      // 音量按钮
+	CButtonUI* m_pBtnVolume = nullptr;      // 音量按钮
 	//CSliderUI* m_pSliderVolume;   // 音量滑动条
-	int m_nCurrentVolume;         // 当前音量值 (0-100)
+	int m_nCurrentVolume = 100;         // 当前音量值 (0-100)
 };
 
 #endif // CVideoPlayerFrame_H
